@@ -1,0 +1,31 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Kekkai\Command\CheckCommand;
+use Kekkai\Command\HookCommand;
+use Kekkai\Command\InitCommand;
+use Kekkai\Command\InstallCommand;
+use Kekkai\Command\ScopeCommand;
+use Kekkai\Command\ServeCommand;
+use Kekkai\Version;
+use Symfony\Component\Console\Application;
+
+foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoload) {
+    if (is_file($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+
+$application = new Application('kekkai', Version::get());
+$application->addCommands([
+    new InitCommand(),
+    new ScopeCommand(),
+    new CheckCommand(),
+    new HookCommand(),
+    new ServeCommand(),
+    new InstallCommand(),
+]);
+$application->run();
