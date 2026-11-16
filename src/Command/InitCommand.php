@@ -57,6 +57,15 @@ final class InitCommand extends Command
 
     protected function configure(): void
     {
+        $this->setHelp(<<<'HELP'
+                Writes a commented kekkai.yaml at the project root: zones, protected files, the policy, the checks.
+                Leaves an existing one as it is.
+
+                  <info>kekkai init</info>
+                  <info>kekkai init --root ../shop</info>
+
+                Then: <comment>kekkai install claude --write</comment>, and <comment>kekkai doctor</comment> to check the setup.
+                HELP);
         $this->addRootOption();
     }
 

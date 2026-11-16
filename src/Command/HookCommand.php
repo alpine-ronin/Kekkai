@@ -29,6 +29,14 @@ final class HookCommand extends Command
 
     protected function configure(): void
     {
+        $this->setHelp(<<<'HELP'
+                The Claude Code hooks, written into .claude/settings.json by <comment>kekkai install claude --write</comment>.
+                They read the hook's JSON on stdin and print Claude Code's answer, or nothing.
+
+                  <info>pre-tool-use</info>   on Edit, Write, MultiEdit, NotebookEdit: refuses an edit outside the scope, asks for a
+                                 protected file, never answers allow (Claude Code's own permissions then apply)
+                  <info>stop</info>           reviews the diff and runs the checks; when they fail, sends the agent back once
+                HELP);
         $this
             ->addArgument('event', InputArgument::REQUIRED, 'pre-tool-use or stop')
             ->addOption('no-checks', null, InputOption::VALUE_NONE, 'stop: only the scope, without the checks')

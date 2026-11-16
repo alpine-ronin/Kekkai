@@ -13,13 +13,23 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'install', description: 'Connect an agent: prints (or writes with --write) the hooks and the MCP server for Claude Code')]
+#[AsCommand(name: 'install', description: 'Connect Claude Code: the hooks and the MCP server (prints them, or writes them with --write)')]
 final class InstallCommand extends Command
 {
     use RootOption;
 
     protected function configure(): void
     {
+        $this->setHelp(<<<'HELP'
+                Connects Claude Code to Kekkai in this project: the PreToolUse and Stop hooks in .claude/settings.json, the
+                MCP server in .mcp.json. Without --write, prints them. --write merges into the files and keeps what is there.
+
+                  <info>kekkai install claude</info>
+                  <info>kekkai install claude --write</info>
+                  <info>kekkai install claude --write --binary "vendor/bin/kekkai"</info>
+
+                Commit both files so that the team works under the same rules.
+                HELP);
         $this
             ->addArgument('agent', InputArgument::OPTIONAL, 'claude', 'claude')
             ->addOption('write', 'w', InputOption::VALUE_NONE, 'Merge the hooks into .claude/settings.json and the server into .mcp.json')

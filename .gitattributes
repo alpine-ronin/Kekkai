@@ -6,3 +6,8 @@
 /.php-cs-fixer.dist.php export-ignore
 /phpstan.dist.neon export-ignore
 /phpunit.xml.dist export-ignore
+/tools export-ignore
+/install.sh export-ignore
+/CONTRIBUTING.md export-ignore
+/SECURITY.md export-ignore
+/CHANGELOG.md export-ignore

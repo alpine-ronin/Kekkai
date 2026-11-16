@@ -8,6 +8,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         php: ['8.3', '8.4', '8.5']
     steps:
@@ -22,3 +23,61 @@ jobs:
         if: matrix.php == '8.3'
       - run: composer analyse
       - run: composer test
+      - run: composer smoke
+
+  # The PHAR, run through a whole task as Claude Code drives it.
+  phar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          ini-values: phar.readonly=0
+      - run: KEKKAI_VERSION=ci composer phar
+      - run: tools/smoke.sh build/kekkai.phar ci
+
+  # install.sh as a user runs it, against a release served locally: latest, a version, edge, the PHAR, a bad checksum.
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      KEKKAI_RELEASES_URL: http://127.0.0.1:8765
+      KEKKAI_INSTALL_DIR: ${{ github.workspace }}/installed
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint
+        if: runner.os == 'Linux'
+        run: shellcheck -s sh install.sh tools/smoke.sh
+      - name: Serve a fake release
+        run: |
+          for dir in latest/download download/v1.0.0 download/edge; do
+            mkdir -p "releases/$dir"
+            for asset in kekkai-linux-x86_64 kekkai-linux-aarch64 kekkai-macos-aarch64 kekkai.phar; do
+              printf '#!/bin/sh\necho "kekkai %s"\n' "$dir" > "releases/$dir/$asset"
+            done
+            (cd "releases/$dir" && shasum -a 256 kekkai* > SHA256SUMS)
+          done
+          (cd releases && python3 -m http.server 8765 --bind 127.0.0.1 > /dev/null 2>&1 &)
+          sleep 1
+      - name: Latest, piped into sh
+        run: sh < install.sh && test "$(installed/kekkai)" = "kekkai latest/download"
+      - name: A given version
+        run: sh install.sh 1.0.0 && test "$(installed/kekkai)" = "kekkai download/v1.0.0"
+      - name: Edge
+        run: sh install.sh edge && test "$(installed/kekkai)" = "kekkai download/edge"
+      - name: The PHAR
+        run: KEKKAI_PHAR=1 sh install.sh && test "$(installed/kekkai)" = "kekkai latest/download"
+      - name: A release that does not exist
+        run: "! sh install.sh 9.9.9"
+      - name: A download that does not match its checksum
+        run: |
+          echo tampered >> releases/latest/download/kekkai-linux-x86_64
+          echo tampered >> releases/latest/download/kekkai-macos-aarch64
+          echo tampered >> releases/latest/download/kekkai-linux-aarch64
+          ! sh install.sh 2> error.log
+          grep -q 'does not match its checksum' error.log

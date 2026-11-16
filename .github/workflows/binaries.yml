@@ -1,0 +1,113 @@
+name: Binaries
+
+# The PHAR (PHP 8.3+) and one executable per platform needing no PHP: a static PHP runtime (static-php-cli's micro)
+# with the PHAR appended. Each is run through a whole task (tools/smoke.sh), attested (where and from what it was
+# built) and left as an artifact. Called by release.yml (version tags) and edge.yml (every push to main).
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version written into the PHAR and printed by --version
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+env:
+  PHP_VERSION: '8.5'
+  # static-php-cli builds the runtime: a pinned release, checked against the SHA-256 of its archive below.
+  SPC_VERSION: '2.8.5'
+  PHP_EXTENSIONS: 'ctype,filter,iconv,mbstring,openssl,pcntl,phar,posix,tokenizer,zlib'
+
+jobs:
+  phar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The oldest PHP Kekkai supports: Composer then picks dependencies that run on it.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          ini-values: phar.readonly=0
+      - run: git config --global user.email ci@example.com && git config --global user.name ci
+      - run: KEKKAI_VERSION="${{ inputs.version }}" composer phar
+      - run: tools/smoke.sh build/kekkai.phar "${{ inputs.version }}"
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: build/kekkai.phar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kekkai.phar
+          path: build/kekkai.phar
+
+  binary:
+    name: binary (${{ matrix.target }})
+    needs: phar
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: linux-x86_64, os: ubuntu-24.04, spc-sha256: 523ba4279c54c7a377156c0dd3a36adf92ee64b01e9a7f5e9e2ec084b8e458e5 }
+          - { target: linux-aarch64, os: ubuntu-24.04-arm, spc-sha256: 675a3840dcdc4ed041fe20eaa54310ce019a9984c1c03951df9ec66df5795213 }
+          - { target: macos-aarch64, os: macos-15, spc-sha256: acf2f25d56d0cbf8e65aa82e5054fef555f7be7c5c38046c6e0819f266d83225 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: kekkai.phar
+          path: build
+
+      - name: Name the runtime by its PHP version and extensions
+        id: runtime-key
+        shell: bash
+        run: echo "key=micro-${{ matrix.target }}-php${{ env.PHP_VERSION }}-spc${{ env.SPC_VERSION }}-$(printf '%s' "$PHP_EXTENSIONS" | shasum -a 256 | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the static PHP runtime
+        id: runtime
+        uses: actions/cache@v4
+        with:
+          path: buildroot/bin/micro.sfx
+          key: ${{ steps.runtime-key.outputs.key }}
+
+      - name: Build the static PHP runtime
+        if: steps.runtime.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          # musl's release archive as Debian mirrors it: musl.libc.org, where spc doctor fetches it, is often unreachable.
+          MUSL_ARCHIVE_URL: https://deb.debian.org/debian/pool/main/m/musl/musl_1.2.5.orig.tar.gz
+          MUSL_ARCHIVE_SHA256: a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4
+        run: |
+          curl -fsSL -o spc.tgz "https://github.com/crazywhalecc/static-php-cli/releases/download/${{ env.SPC_VERSION }}/spc-${{ matrix.target }}.tar.gz"
+          echo "${{ matrix.spc-sha256 }}  spc.tgz" | shasum -a 256 -c -
+          tar -xzf spc.tgz
+          if [ "$RUNNER_OS" = Linux ]; then
+              curl -fsSL --connect-timeout 20 --max-time 120 --retry 3 --retry-all-errors -o "$RUNNER_TEMP/musl-1.2.5.tar.gz" "$MUSL_ARCHIVE_URL"
+              echo "$MUSL_ARCHIVE_SHA256  $RUNNER_TEMP/musl-1.2.5.tar.gz" | sha256sum -c -
+              ./spc download musl-1.2.5 --custom-url="musl-1.2.5:file://$RUNNER_TEMP/musl-1.2.5.tar.gz"
+          fi
+          ./spc doctor --auto-fix
+          ./spc download --with-php=${{ env.PHP_VERSION }} --for-extensions="${{ env.PHP_EXTENSIONS }}" --prefer-pre-built
+          ./spc build "${{ env.PHP_EXTENSIONS }}" --build-micro
+
+      - name: Append the PHAR to the runtime
+        run: |
+          mkdir -p dist
+          cat buildroot/bin/micro.sfx build/kekkai.phar > "dist/kekkai-${{ matrix.target }}"
+          chmod +x "dist/kekkai-${{ matrix.target }}"
+
+      - run: git config --global user.email ci@example.com && git config --global user.name ci
+      - run: tools/smoke.sh "dist/kekkai-${{ matrix.target }}" "${{ inputs.version }}"
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/kekkai-${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kekkai-${{ matrix.target }}
+          path: dist/kekkai-${{ matrix.target }}

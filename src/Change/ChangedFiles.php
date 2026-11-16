@@ -28,6 +28,9 @@ final readonly class ChangedFiles
         }
 
         $hasCommit = Process::run(['git', 'rev-parse', '--verify', '--quiet', $base . '^{commit}'], $this->root)->exitCode === 0;
+        if (!$hasCommit && $base !== 'HEAD') {
+            throw new \RuntimeException(sprintf('Unknown git revision: %s.', $base));
+        }
         $tracked = $hasCommit
             ? Process::run(['git', 'diff', '--name-only', '-z', '--no-renames', $base, '--'], $this->root)
             : Process::run(['git', 'diff', '--name-only', '-z', '--cached', '--'], $this->root);

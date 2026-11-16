@@ -12,13 +12,25 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'scope', description: 'Show, declare, widen or clear the scope of the current task: show | declare <paths>... -m <intent> | widen <paths>... -m <reason> | clear')]
+#[AsCommand(name: 'scope', description: 'Show, declare, widen or clear the scope of the current task')]
 final class ScopeCommand extends Command
 {
     use RootOption;
 
     protected function configure(): void
     {
+        $this->setHelp(<<<'HELP'
+                The scope is what the current task may change: an intent and a list of paths, globs or zones.
+                The agent declares it with the MCP tool declare_scope; you can declare it yourself before handing the task over.
+
+                  <info>kekkai scope</info>                                              show it
+                  <info>kekkai scope declare pricing config/services.yaml -m "Add a price to products"</info>
+                  <info>kekkai scope widen src/Shared/Money.php -m "Prices are rounded by Money"</info>
+                  <info>kekkai scope clear</info>                                        the task is done
+
+                Declaring replaces the current scope. Widening from here works even with allow-widen: false.
+                Patterns: <comment>*</comment> within a directory, <comment>**</comment> across, a path without wildcard is that file or directory.
+                HELP);
         $this
             ->addArgument('action', InputArgument::OPTIONAL, 'show, declare, widen or clear', 'show')
             ->addArgument('paths', InputArgument::IS_ARRAY | InputArgument::OPTIONAL, 'Paths, globs or zones')

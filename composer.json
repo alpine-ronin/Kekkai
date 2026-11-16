@@ -58,9 +58,14 @@
             "@cs",
             "@analyse",
             "@test"
-        ]
+        ],
+        "phar": "@php -d phar.readonly=0 tools/build-phar.php",
+        "smoke": "tools/smoke.sh bin/kekkai"
     },
     "config": {
+        "platform": {
+            "php": "8.3.0"
+        },
         "sort-packages": true
     }
 }

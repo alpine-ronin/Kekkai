@@ -1,0 +1,57 @@
+name: Edge
+
+# Every push to main publishes its PHAR and executables as the pre-release "edge": what `install.sh edge` and
+# `kekkai self-update edge` install. Not a version: releases/latest never points to a pre-release, and the edge tag
+# moves with main, unlike version tags.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: edge
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/binaries.yml
+    with:
+      version: dev-main
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: kekkai*
+          path: dist
+          merge-multiple: true
+      - name: Checksums and version
+        run: |
+          cd dist
+          printf 'dev-main+%s\n' "${GITHUB_SHA::7}" > VERSION
+          sha256sum kekkai* > SHA256SUMS
+      - name: Replace the edge pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if gh release view edge > /dev/null 2>&1; then
+              gh release delete edge --cleanup-tag --yes || { sleep 20; continue; }
+            fi
+            if gh release create edge dist/* --prerelease --target "$GITHUB_SHA" --title "edge (dev-main)" \
+              --notes "Built from main at $GITHUB_SHA. Not a release: install a version for production use."; then
+              published=1
+              break
+            fi
+            sleep 20
+          done
+          test -n "${published:-}"

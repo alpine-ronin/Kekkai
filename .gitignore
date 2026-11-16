@@ -5,3 +5,4 @@
 /.idea/
 /.kekkai/
 /.phpunit.result.cache
+/build/

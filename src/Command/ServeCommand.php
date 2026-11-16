@@ -18,6 +18,10 @@ final class ServeCommand extends Command
 
     protected function configure(): void
     {
+        $this->setHelp(<<<'HELP'
+                The MCP server, on stdio. Tools: declare_scope, widen_scope, show_scope, check_changes.
+                Your MCP client starts it; you never run it yourself. Written into .mcp.json by <comment>kekkai install claude --write</comment>.
+                HELP);
         $this->addRootOption();
     }
 

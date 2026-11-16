@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 $finder = (new PhpCsFixer\Finder())
-    ->in([__DIR__ . '/src', __DIR__ . '/tests'])
+    ->in([__DIR__ . '/src', __DIR__ . '/tests', __DIR__ . '/tools'])
     ->append([__DIR__ . '/bin/kekkai']);
 
 return (new PhpCsFixer\Config())
