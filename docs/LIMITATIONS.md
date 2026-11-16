@@ -16,5 +16,8 @@
   misses them. Use `kekkai check --base <revision>` to review a series of commits.
 - **Renames count as a deletion and an addition**, both judged against the scope.
 - **Sent back once.** If the stop review fails twice, Claude Code lets the agent stop: read the report yourself.
+- **Binaries for Linux (x86_64, arm64) and macOS on Apple silicon.** Elsewhere (an Intel Mac, Windows), the PHAR
+  with PHP 8.3+. The hooks run through `sh`, so on Windows Claude Code needs Git Bash or WSL.
+- **Not on Packagist yet.** Composer installs it from the GitHub repository (see [INSTALL.md](INSTALL.md)).
 - **Configuration read at start by the MCP server.** After editing `kekkai.yaml`, reconnect the server (`/mcp`); the
   hooks read it on every call.

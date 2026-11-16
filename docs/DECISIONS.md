@@ -53,9 +53,18 @@ scope file or its rules has no scope. The user changes them with the CLI or an e
 ## PHP 8.3, two dependencies
 
 A hook runs on every edit, in projects with any PHP version. PHP 8.3 (phpgraph and Airlock need 8.5) and only Symfony
-Console and Yaml keep it installable as a dev dependency almost anywhere and fast to start.
+Console and Yaml keep it installable as a Composer dev dependency almost anywhere, and fast to start. The binary
+carries its own PHP 8.5; the PHAR is built against PHP 8.3, so that it runs on any supported PHP.
 
-*Revisit if* a PHAR or a binary is published: the PHP version of the project would then no longer matter.
+## A binary, a PHAR, and no Docker image
+
+A hook runs on every edit, on the developer's machine, in their project: a container would have to mount the project
+and start on each call. The binary (a static PHP runtime with the PHAR appended, as Airlock and phpgraph ship) needs
+nothing installed; the PHAR serves systems without a binary. Both come with `SHA256SUMS` and an attestation, and
+`kekkai self-update` checks both like the install script.
+
+`self-update` replaces the running file by becoming `mv` (`pcntl_exec`): PHP reads the PHAR's code from its file as
+it needs it, so no more of Kekkai's code may run once the file is replaced.
 
 ## Short tool descriptions
 

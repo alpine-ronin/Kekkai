@@ -113,7 +113,7 @@ Clear it when a task is done; the next task declares its own.
 1. **Changed files**: `git diff --name-only --no-renames <base>` (the working tree, staged or not, against the
    revision) and the untracked files not ignored (`git ls-files --others --exclude-standard`), sorted and
    deduplicated. Deleted files count. In a repository without commits, the staged files. Outside a git repository,
-   an error.
+   or with a revision git does not know, an error.
 2. **Findings**: the decision for each changed file, except those allowed. `no-scope` decisions are left out when
    `without-scope: allow`.
 3. **Checks**: when `$runChecks` and at least one file changed, every check of `kekkai.yaml`, in order, from the
@@ -182,3 +182,5 @@ The configuration is read when the server starts; the scope on every call.
 | `kekkai scope …` | Done | Refused (validation) | Unknown action |
 | `kekkai hook …` | Always, unless the event is unknown | | Unknown event |
 | `kekkai install` | Done | | Unknown agent |
+| `kekkai doctor` | Nothing is ✗ | Something is ✗ | |
+| `kekkai self-update` | Updated, or nothing to do | Failed (download, checksum, attestation); with `--check`, a newer release exists | |

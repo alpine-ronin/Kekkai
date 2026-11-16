@@ -4,8 +4,10 @@ Kekkai is small on purpose: a hook runs on every edit of the agent, so it must s
 little (Symfony Console and Yaml).
 
 ```text
-bin/kekkai                 Symfony Console application
+bin/kekkai                 runs Kekkai\Application
 src/
+├── Application.php        the commands and the start banner
+├── Version.php            written into the PHAR at build time, else read from Composer
 ├── Glob.php               path patterns: *, ?, **, directories
 ├── Path.php               paths relative to the project root, normalised without realpath()
 ├── Verdict.php            allow | ask | deny
@@ -31,7 +33,25 @@ src/
 │   └── ClaudeCode.php     PreToolUse and Stop, JSON in, JSON out
 ├── Mcp/
 │   └── McpServer.php      JSON-RPC over stdio, four tools
-└── Command/               init, scope, check, hook, serve, install
+├── Update/
+│   ├── Releases.php       VERSION, SHA256SUMS and files of a release (latest, edge, a version)
+│   ├── Installation.php   binary, PHAR, Composer or source: what self-update can replace
+│   └── SelfUpdater.php    download, checksum, attestation, then exec mv over the running file
+└── Command/               init, install, doctor, scope, check, hook, serve, self-update
+tools/
+├── build-phar.php         build/kekkai.phar, production dependencies only
+├── smoke.sh               any build through a whole task, in a new git repository
+└── demo/                  the README's GIF, screenshots and diagram, from real runs
+install.sh                 the curl install: platform, checksum, attestation
+```
+
+## Distribution
+
+```text
+push to main ──▶ ci.yml        tests on PHP 8.3, 8.4, 8.5; the PHAR smoke-tested; install.sh against a local release
+             └─▶ edge.yml      binaries.yml, then the pre-release "edge"
+tag v1.2.3   ──▶ release.yml   binaries.yml, then the release: PHAR, binaries, SHA256SUMS, VERSION, notes from CHANGELOG
+binaries.yml: the PHAR (built on PHP 8.3) ─▶ static PHP 8.5 runtime + PHAR per platform ─▶ smoke.sh ─▶ attestation
 ```
 
 ## Flow of an edit
@@ -71,9 +91,14 @@ Claude Code ──Stop JSON──▶ kekkai hook stop
 
 ## Tests
 
-- `tests/Unit`: patterns, paths, configuration, scope, gate.
-- `tests/Integration/WorkflowTest.php`: a real git repository in a temporary directory, the whole task: no scope,
-  declaration, edits in and out of scope, a change through the shell caught at stop, widening, a failing check, the
-  MCP protocol.
+- `tests/Unit`: patterns, paths, configuration, scope, gate, report, hooks, the MCP server over a stream, processes,
+  the scope store.
+- `tests/Integration`: real git repositories in temporary directories. `ChangedFilesTest`: every kind of change
+  (modified, deleted, staged, untracked, renamed, ignored, file names with spaces, no commit yet, another revision).
+  `WorkflowTest`: a whole task, from no scope to a passing review.
+- `tests/Command`: every command through Symfony's `CommandTester`, `self-update` against a release on disk (latest,
+  a version, edge, a tampered file, a missing release).
+- `tools/smoke.sh`: a built executable through a whole task, as Claude Code drives it; run in CI on the source, the
+  PHAR and each binary.
 
 `composer check` runs the code style, PHPStan at level max and the tests, as the CI does on PHP 8.3, 8.4 and 8.5.
