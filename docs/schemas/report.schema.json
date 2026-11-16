@@ -1,0 +1,45 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/alpine-ronin/kekkai/blob/main/docs/schemas/report.schema.json",
+    "title": "Kekkai review (kekkai check --format json)",
+    "type": "object",
+    "required": ["passed", "base", "files", "scope", "findings", "checks"],
+    "additionalProperties": false,
+    "properties": {
+        "passed": {"type": "boolean"},
+        "base": {"type": "string", "description": "The git revision compared with."},
+        "files": {"type": "array", "items": {"type": "string"}, "description": "Files changed since base, untracked included, sorted."},
+        "scope": {
+            "oneOf": [{"type": "null"}, {"$ref": "scope.schema.json"}]
+        },
+        "findings": {
+            "type": "array",
+            "description": "The changed files not allowed, with the rule that judged them.",
+            "items": {
+                "type": "object",
+                "required": ["path", "rule", "verdict"],
+                "additionalProperties": false,
+                "properties": {
+                    "path": {"type": "string"},
+                    "rule": {"enum": ["outside-project", "guarded", "protected", "no-scope", "outside-scope"]},
+                    "verdict": {"enum": ["ask", "deny"]}
+                }
+            }
+        },
+        "checks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["name", "command", "passed", "timedOut", "output"],
+                "additionalProperties": false,
+                "properties": {
+                    "name": {"type": "string"},
+                    "command": {"type": "string"},
+                    "passed": {"type": "boolean"},
+                    "timedOut": {"type": "boolean"},
+                    "output": {"type": "string", "description": "The last 30 lines of the output."}
+                }
+            }
+        }
+    }
+}

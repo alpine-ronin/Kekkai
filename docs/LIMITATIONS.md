@@ -1,0 +1,20 @@
+# Limitations
+
+- **Not a sandbox.** The agent declares its own scope, and can widen it with a reason. Kekkai stops drift and makes
+  it visible; it does not stop an agent determined to get around it.
+- **Shell writes are caught after the fact.** `sed -i`, a generator or a formatter writing outside the scope is only
+  seen by the stop review, from the git diff. To control commands before they run, use
+  [Airlock](https://github.com/alpine-ronin/airlock).
+- **Edit hooks for Claude Code only.** Other agents get the MCP server and `kekkai check`, with no refusal before the
+  edit.
+- **One scope per checkout.** Two agents in the same directory share it; use one git worktree per agent.
+- **Git only.** The review reads the changes from git; without a repository, `kekkai check` fails and the stop hook
+  does nothing.
+- **Files ignored by git are not reviewed.** A change in an ignored file (a local `.env`, `var/`) is guarded by the
+  edit hook but invisible to the review.
+- **The review compares with `HEAD`.** Commits the agent makes during the task leave the diff: the stop review then
+  misses them. Use `kekkai check --base <revision>` to review a series of commits.
+- **Renames count as a deletion and an addition**, both judged against the scope.
+- **Sent back once.** If the stop review fails twice, Claude Code lets the agent stop: read the report yourself.
+- **Configuration read at start by the MCP server.** After editing `kekkai.yaml`, reconnect the server (`/mcp`); the
+  hooks read it on every call.

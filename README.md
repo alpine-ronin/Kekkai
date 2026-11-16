@@ -1,4 +1,9 @@
-<h1 align="center">Kekkai</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/alpine-ronin/kekkai/main/docs/brand/logo-dark.svg">
+    <img src="https://raw.githubusercontent.com/alpine-ronin/kekkai/main/docs/brand/logo.svg" alt="Kekkai" width="400">
+  </picture>
+</h1>
 
 <p align="center"><b>Keeps an AI coding agent inside the scope it declared.</b></p>
 
@@ -30,8 +35,12 @@ No LLM, no network. A hook call takes about 50 ms.
 
 ## Quick start
 
+Kekkai is not on Packagist yet. Until the first release, add the repository to `composer.json`
+(`"repositories": [{"type": "vcs", "url": "https://github.com/alpine-ronin/kekkai"}]`) and require `dev-main`.
+Other ways: [docs/INSTALL.md](docs/INSTALL.md).
+
 ```bash
-composer require --dev alpine-ronin/kekkai
+composer require --dev alpine-ronin/kekkai:dev-main
 vendor/bin/kekkai init                    # writes kekkai.yaml
 vendor/bin/kekkai install claude --write  # hooks in .claude/settings.json, MCP server in .mcp.json
 ```
@@ -113,6 +122,22 @@ project are covered: reading, running, editing.
   it. Use one worktree per agent.
 - **The stop check sends the agent back once.** If it still fails, Claude Code lets it stop, so a check that can
   never pass does not loop forever: read the report yourself.
+
+## Documentation
+
+| | |
+|---|---|
+| [SPEC.md](docs/SPEC.md) | The specification: rules in order, scope lifecycle, files, review, hook and MCP protocols, exit codes |
+| [CONFIGURATION.md](docs/CONFIGURATION.md) | Every key of `kekkai.yaml`, choosing the policy, zones from bounded contexts, checks |
+| [HOOKS.md](docs/HOOKS.md) | Claude Code setup and a task step by step |
+| [MCP-TOOLS.md](docs/MCP-TOOLS.md) | The four tools, their arguments and answers |
+| [CLI.md](docs/CLI.md) | Every command, and Kekkai in CI |
+| [INSTALL.md](docs/INSTALL.md) | Composer, global, from source |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | The code, the flows, the design rules |
+| [DECISIONS.md](docs/DECISIONS.md) | Why it works this way |
+| [LIMITATIONS.md](docs/LIMITATIONS.md) | What it does not cover |
+| [schemas/](docs/schemas) | JSON schemas of the scope file and of `kekkai check --format json` |
+| [brand/](docs/brand) | Logo, icon, social preview |
 
 ## License
 

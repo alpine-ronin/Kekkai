@@ -1,0 +1,31 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/alpine-ronin/kekkai/blob/main/docs/schemas/scope.schema.json",
+    "title": "Kekkai scope (.kekkai/scope.json)",
+    "type": "object",
+    "required": ["intent", "entries", "by", "declaredAt", "widenings"],
+    "additionalProperties": false,
+    "properties": {
+        "intent": {"type": "string", "minLength": 1, "description": "What the task is for, in one sentence."},
+        "entries": {"$ref": "#/$defs/entries", "description": "Paths, globs or zone names declared."},
+        "by": {"enum": ["agent", "user"]},
+        "declaredAt": {"type": "string", "format": "date-time"},
+        "widenings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["entries", "reason", "by", "at"],
+                "additionalProperties": false,
+                "properties": {
+                    "entries": {"$ref": "#/$defs/entries"},
+                    "reason": {"type": "string", "minLength": 1},
+                    "by": {"enum": ["agent", "user"]},
+                    "at": {"type": "string", "format": "date-time"}
+                }
+            }
+        }
+    },
+    "$defs": {
+        "entries": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true}
+    }
+}
