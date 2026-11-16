@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Kekkai\Tests\Unit;
 
+use Kekkai\Config\Config;
 use Kekkai\Hook\ClaudeCode;
+use Kekkai\Scope\Scope;
+use Kekkai\Scope\ScopeStore;
 use Kekkai\Tests\Support\Json;
 use Kekkai\Tests\Support\TemporaryProject;
 use Kekkai\Version;
@@ -78,5 +81,22 @@ final class HookTest extends TestCase
         self::assertFalse(Version::isRelease('dev-main'));
         self::assertNotSame('', Version::get());
         self::assertNull(Version::executable());
+    }
+
+    public function testAProjectReachedThroughASymbolicLink(): void
+    {
+        $project = (new TemporaryProject())->write('src/Catalog/Product.php');
+        $link = sys_get_temp_dir() . '/kekkai-link-' . bin2hex(random_bytes(4));
+        symlink($project->root, $link);
+
+        try {
+            (new ScopeStore($project->root))->save(Scope::declare('Prices', ['src/Catalog/'], 'agent', new Config()));
+
+            self::assertNull(ClaudeCode::preToolUse(['tool_name' => 'Write', 'tool_input' => ['file_path' => $link . '/src/Catalog/Price.php']], $project->root));
+            self::assertSame('deny', Json::path(ClaudeCode::preToolUse(['tool_name' => 'Write', 'tool_input' => ['file_path' => $link . '/src/Billing/Invoice.php']], $project->root), 'hookSpecificOutput', 'permissionDecision'));
+            self::assertNull(ClaudeCode::preToolUse(['tool_name' => 'Write', 'tool_input' => ['file_path' => $link . '/src/Catalog/Deep/New/Price.php']], $link));
+        } finally {
+            unlink($link);
+        }
     }
 }

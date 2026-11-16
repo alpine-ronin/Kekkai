@@ -29,6 +29,9 @@ final readonly class Gate
     public function decide(string $path): Decision
     {
         $relative = Path::relative($this->root, $path);
+        if ($relative === null && Path::isAbsolute($path)) {
+            $relative = Path::relative($this->root, Path::resolve($path));
+        }
         if ($relative === null || $relative === '' || str_starts_with($relative, '../')) {
             return new Decision(Verdict::Ask, Decision::OUTSIDE_PROJECT, $path, sprintf('%s is outside the project %s.', $path, $this->root));
         }

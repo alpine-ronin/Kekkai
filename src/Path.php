@@ -28,6 +28,27 @@ final class Path
     /**
      * @param string $path
      */
+    public static function resolve(string $path): string
+    {
+        $path = self::normalize(str_replace('\\', '/', $path));
+        $missing = [];
+        $existing = $path;
+        while ($existing !== '' && $existing !== '/' && realpath($existing) === false) {
+            array_unshift($missing, basename($existing));
+            $existing = \dirname($existing);
+        }
+
+        $real = realpath($existing === '' ? '.' : $existing);
+        if ($real === false) {
+            return $path;
+        }
+
+        return self::normalize(rtrim(str_replace('\\', '/', $real), '/') . ($missing === [] ? '' : '/' . implode('/', $missing)));
+    }
+
+    /**
+     * @param string $path
+     */
     public static function isAbsolute(string $path): bool
     {
         return str_starts_with($path, '/') || preg_match('#^[A-Za-z]:[/\\\\]#', $path) === 1;
