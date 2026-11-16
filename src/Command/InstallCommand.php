@@ -13,7 +13,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'install', description: 'Connect Claude Code: the hooks and the MCP server (prints them, or writes them with --write)')]
+#[AsCommand(name: 'install', description: 'Connect Claude Code: hooks and MCP server, printed or written (--write)')]
 final class InstallCommand extends Command
 {
     use RootOption;

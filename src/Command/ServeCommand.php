@@ -11,7 +11,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'serve', description: 'MCP server on stdio: declare_scope, widen_scope, show_scope, check_changes')]
+#[AsCommand(name: 'serve', description: 'MCP server on stdio, for the agent to declare and widen its scope')]
 final class ServeCommand extends Command
 {
     use RootOption;

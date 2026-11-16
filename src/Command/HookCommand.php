@@ -12,7 +12,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'hook', description: 'Claude Code hook, reading its JSON on stdin: pre-tool-use or stop')]
+#[AsCommand(name: 'hook', description: 'Claude Code hooks (JSON on stdin): pre-tool-use, stop')]
 final class HookCommand extends Command
 {
     /** @var resource|null */

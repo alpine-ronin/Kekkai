@@ -8,6 +8,7 @@ use Kekkai\Config\Config;
 use Kekkai\Gate\Decision;
 use Kekkai\Scope\Scope;
 use Kekkai\Verdict;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 
 final readonly class Report
 {
@@ -45,14 +46,28 @@ final readonly class Report
         ));
     }
 
-    public function toText(): string
+    /**
+     * @param bool $styled
+     */
+    public function toText(bool $styled = false): string
     {
+        $text = static fn (string $value): string => $styled ? OutputFormatter::escape($value) : $value;
+        $mark = static fn (string $symbol, string $style): string => $styled ? sprintf('<%s>%s</>', $style, $symbol) : $symbol;
+        $fail = $mark('✗', 'fg=red;options=bold');
+        $warn = $mark('!', 'fg=yellow;options=bold');
+        $pass = $mark('✓', 'fg=green;options=bold');
+
         if ($this->files === []) {
-            return sprintf('Kekkai: no change since %s.', $this->base);
+            return sprintf('Kekkai: no change since %s.', $text($this->base));
         }
 
-        $lines = [sprintf('Kekkai: %d file(s) changed since %s. %s', \count($this->files), $this->base, $this->passed() ? 'PASSED' : 'FAILED')];
-        $lines[] = $this->scope?->describe($this->config) ?? 'Scope: none declared';
+        $lines = [sprintf(
+            'Kekkai: %d file(s) changed since %s. %s',
+            \count($this->files),
+            $text($this->base),
+            $this->passed() ? $mark('PASSED', 'fg=green;options=bold') : $mark('FAILED', 'fg=red;options=bold'),
+        )];
+        $lines[] = $text($this->scope?->describe($this->config) ?? 'Scope: none declared');
 
         $groups = [
             Decision::GUARDED => 'Kekkai files changed (the agent may not edit them: check who did)',
@@ -67,20 +82,20 @@ final readonly class Report
                 continue;
             }
             $blocking = $rule === Decision::OUTSIDE_SCOPE && $this->config->outsideScope === Verdict::Deny;
-            $lines[] = sprintf('%s %s:', $blocking ? '✗' : '!', $title);
+            $lines[] = sprintf('%s %s:', $blocking ? $fail : $warn, $title);
             foreach ($paths as $path) {
-                $lines[] = '  ' . $path;
+                $lines[] = '  ' . $text($path);
             }
         }
 
         if ($this->scope !== null && $this->scope->widenings !== []) {
-            $lines[] = sprintf('! Scope widened %d time(s) during the task: see the scope above.', \count($this->scope->widenings));
+            $lines[] = sprintf('%s Scope widened %d time(s) during the task: see the scope above.', $warn, \count($this->scope->widenings));
         }
 
         foreach ($this->checks as $check) {
-            $lines[] = sprintf('%s check %s%s', $check->passed ? '✓' : '✗', $check->name, $check->timedOut ? ' (timed out)' : '');
+            $lines[] = sprintf('%s check %s%s', $check->passed ? $pass : $fail, $text($check->name), $check->timedOut ? ' (timed out)' : '');
             if (!$check->passed && trim($check->output) !== '') {
-                $lines[] = preg_replace('/^/m', '    ', $check->tail()) ?? $check->tail();
+                $lines[] = $text(preg_replace('/^/m', '    ', $check->tail()) ?? $check->tail());
             }
         }
 

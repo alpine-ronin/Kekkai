@@ -27,9 +27,9 @@ jobs:
   phar:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The oldest PHP Kekkai supports: Composer then picks dependencies that run on it.
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.3'
           coverage: none
@@ -37,10 +37,10 @@ jobs:
       - run: git config --global user.email ci@example.com && git config --global user.name ci
       - run: KEKKAI_VERSION="${{ inputs.version }}" composer phar
       - run: tools/smoke.sh build/kekkai.phar "${{ inputs.version }}"
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: build/kekkai.phar
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: kekkai.phar
           path: build/kekkai.phar
@@ -57,8 +57,8 @@ jobs:
           - { target: macos-aarch64, os: macos-15, spc-sha256: acf2f25d56d0cbf8e65aa82e5054fef555f7be7c5c38046c6e0819f266d83225 }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: kekkai.phar
           path: build
@@ -70,7 +70,7 @@ jobs:
 
       - name: Restore the static PHP runtime
         id: runtime
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: buildroot/bin/micro.sfx
           key: ${{ steps.runtime-key.outputs.key }}
@@ -104,10 +104,10 @@ jobs:
       - run: git config --global user.email ci@example.com && git config --global user.name ci
       - run: tools/smoke.sh "dist/kekkai-${{ matrix.target }}" "${{ inputs.version }}"
 
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: dist/kekkai-${{ matrix.target }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: kekkai-${{ matrix.target }}
           path: dist/kekkai-${{ matrix.target }}

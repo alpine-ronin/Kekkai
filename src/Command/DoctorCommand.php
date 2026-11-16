@@ -11,11 +11,12 @@ use Kekkai\Update\Installation;
 use Kekkai\Version;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'doctor', description: 'Check the setup of this project: git, kekkai.yaml, Claude Code hooks, MCP server, checks')]
+#[AsCommand(name: 'doctor', description: 'Check the setup of this project: git, kekkai.yaml, hooks, MCP server, checks')]
 final class DoctorCommand extends Command
 {
     private const OK = 'ok';
@@ -29,7 +30,7 @@ final class DoctorCommand extends Command
             ->setHelp(<<<'HELP'
                 Checks what Kekkai needs in this project and says how to fix what is missing:
 
-                  <info>✓</info> fine   <comment>!</comment> works, but worth a look   <error>✗</error> Kekkai cannot guard this project as it is
+                  <fg=green>✓</> fine   <fg=yellow>!</> works, but worth a look   <fg=red>✗</> Kekkai cannot guard this project as it is
 
                 Exit code 1 when something is ✗.
                 HELP);
@@ -90,7 +91,7 @@ final class DoctorCommand extends Command
         $scope = $project->scope();
         $results[] = $scope === null
             ? [self::OK, 'No scope declared: the next task declares its own']
-            : [self::OK, sprintf('Scope declared by %s: %s (%d widening(s)); kekkai scope clear when the task is done', $scope->by, $scope->intent, \count($scope->widenings))];
+            : [self::OK, sprintf('Scope: %s (declared by %s, %d widening(s))', $scope->intent, $scope->by, \count($scope->widenings)), 'kekkai scope clear when the task is done'];
 
         if (is_dir($project->root . '/' . ScopeStore::DIRECTORY) && !is_file($project->root . '/' . ScopeStore::DIRECTORY . '/.gitignore')) {
             $results[] = [self::WARN, '.kekkai/ has no .gitignore: the scope could be committed', 'echo "*" > .kekkai/.gitignore'];
@@ -113,12 +114,12 @@ final class DoctorCommand extends Command
     {
         foreach ($results as $result) {
             $output->writeln(match ($result[0]) {
-                self::OK => '<info>✓</info> ',
-                self::WARN => '<comment>!</comment> ',
-                default => '<error>✗</error> ',
-            } . $result[1]);
+                self::OK => '<fg=green;options=bold>✓</> ',
+                self::WARN => '<fg=yellow;options=bold>!</> ',
+                default => '<fg=red;options=bold>✗</> ',
+            } . OutputFormatter::escape($result[1]));
             if (isset($result[2])) {
-                $output->writeln('    → ' . $result[2]);
+                $output->writeln('    <fg=gray>→</> ' . OutputFormatter::escape($result[2]));
             }
         }
     }

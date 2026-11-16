@@ -16,7 +16,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'self-update', description: 'Update the Kekkai binary or PHAR to the latest release, or to a given version', aliases: ['update'])]
+#[AsCommand(name: 'self-update', description: 'Update the binary or PHAR to the latest release, or to a given one', aliases: ['update'])]
 final class SelfUpdateCommand extends Command
 {
     /**

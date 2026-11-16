@@ -11,7 +11,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'check', description: 'Check the files changed since a revision against the scope, and run the checks of kekkai.yaml')]
+#[AsCommand(name: 'check', description: 'Review the changes since a revision: the scope, then the checks of kekkai.yaml')]
 final class CheckCommand extends Command
 {
     use RootOption;
@@ -48,12 +48,11 @@ final class CheckCommand extends Command
             return Command::INVALID;
         }
 
-        $output->writeln(
-            $input->getOption('format') === 'json'
-                ? json_encode($report->toArray(), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR)
-                : $report->toText(),
-            OutputInterface::OUTPUT_RAW,
-        );
+        if ($input->getOption('format') === 'json') {
+            $output->writeln(json_encode($report->toArray(), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR), OutputInterface::OUTPUT_RAW);
+        } else {
+            $output->writeln($report->toText(styled: true));
+        }
 
         return $report->passed() ? Command::SUCCESS : Command::FAILURE;
     }
