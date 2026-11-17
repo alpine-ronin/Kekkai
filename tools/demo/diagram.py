@@ -12,9 +12,9 @@ THEMES = {
 
 STEPS = [
     ("1", "Declare", "declare_scope", ["The agent says what the", "task is for and the paths", "or zones it will change."]),
-    ("2", "Guard", "PreToolUse hook", ["Edit, Write outside the", "scope: refused, with the", "scope and what to do."]),
+    ("2", "Guard", "edit hook", ["Edit, Write outside the", "scope: refused, with the", "scope and what to do."]),
     ("3", "Widen", "widen_scope", ["Needs more? It widens,", "with a reason the", "reviewer sees."]),
-    ("4", "Review", "Stop hook", ["The git diff, shell writes", "included, and your checks.", "Fails: back to work, once."]),
+    ("4", "Review", "stop hook", ["The git diff, shell writes", "included, and your checks.", "Fails: back to work, once."]),
 ]
 
 FONT = "ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
@@ -43,7 +43,7 @@ def svg(t):
             ax = x + card_w + 6
             ay = top + card_h / 2
             parts.append(f'<path d="M{ax} {ay}h{gap - 12}m-6 -6l6 6l-6 6" fill="none" stroke="{t["accent"]}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>')
-    parts.append(f'<text x="{width / 2}" y="{top + card_h + 32}" text-anchor="middle" font-family="{FONT}" font-size="14" fill="{t["muted"]}">Edits in the scope get no answer from Kekkai: your own Claude Code permissions apply as before.</text>')
+    parts.append(f'<text x="{width / 2}" y="{top + card_h + 32}" text-anchor="middle" font-family="{FONT}" font-size="14" fill="{t["muted"]}">Edits in the scope get no answer from Kekkai: the agent's own permissions apply as before.</text>')
     parts.append("</svg>\n")
     return "".join(parts)
 

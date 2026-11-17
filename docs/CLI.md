@@ -1,15 +1,16 @@
 # CLI
 
-Every command takes `--root <dir>` (default: `$CLAUDE_PROJECT_DIR`, else the current directory).
+Every command takes `--root <dir>` (default: `$CLAUDE_PROJECT_DIR` when set, else the current directory).
 
 ## kekkai init
 
 Writes a commented `kekkai.yaml`. Leaves an existing one as it is.
 
-## kekkai install claude [--write] [--binary <command>]
+## kekkai install claude | cursor [--write] [--binary <command>]
 
-Prints the hooks for `.claude/settings.json` and the server for `.mcp.json`; with `--write`, merges them into those
-files. See [HOOKS.md](HOOKS.md).
+Prints the agent's hooks and the MCP server; with `--write`, merges them into its files: `.claude/settings.json` and
+`.mcp.json` for Claude Code, `.cursor/hooks.json` and `.cursor/mcp.json` for Cursor. Any other agent: register
+`kekkai serve` yourself. See [HOOKS.md](HOOKS.md).
 
 ## kekkai doctor
 
@@ -21,9 +22,10 @@ Checks what Kekkai needs in this project, one line each, with the command that f
 | Git repository | not a git repository | |
 | `kekkai.yaml` | invalid | missing (the defaults apply) |
 | Each check's command | | not on the `PATH` |
-| `PreToolUse` hook in `.claude/settings.json` | missing | |
-| `Stop` hook | | missing |
-| `kekkai` server in `.mcp.json` | | missing |
+| An agent connected (a Kekkai hook in `.claude/settings.json` or `.cursor/hooks.json`) | none | |
+| For each connected agent: its edit hook | missing | |
+| Its stop hook | | missing |
+| The `kekkai` server in its MCP file | | missing |
 | The scope | | |
 
 Exit code 1 when a line is ✗.
@@ -66,9 +68,10 @@ Alias `kekkai update`. Downloads the release's file for this installation (the b
 place of the running one. `--check` only says whether a newer release exists (exit code 1 when one does).
 Installed with Composer or run from a clone, it says how to update instead. See [INSTALL.md](INSTALL.md#updating).
 
-## kekkai hook pre-tool-use | stop [--no-checks]
+## kekkai hook pre-tool-use | stop [--agent claude | cursor] [--no-checks]
 
-The Claude Code hooks: JSON on stdin, JSON on stdout. See [SPEC.md, Claude Code hooks](SPEC.md#claude-code-hooks).
+The agent hooks: JSON on stdin, JSON on stdout, in the agent's format (`claude` by default). See
+[SPEC.md, Agent hooks](SPEC.md#agent-hooks).
 
 ## kekkai serve
 

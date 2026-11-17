@@ -115,4 +115,4 @@ case ":$PATH:" in
     *":$install_dir:"*) ;;
     *) printf 'Add %s to your PATH to run kekkai by name: export PATH="%s:%sPATH"\n' "$install_dir" "$install_dir" '$' ;;
 esac
-printf 'Then, in your project: kekkai init && kekkai install claude --write && kekkai doctor\n'
+printf 'Then, in your project: kekkai init && kekkai install claude --write (or cursor) && kekkai doctor\n'

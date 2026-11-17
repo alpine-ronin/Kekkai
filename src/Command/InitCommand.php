@@ -64,7 +64,7 @@ final class InitCommand extends Command
                   <info>kekkai init</info>
                   <info>kekkai init --root ../shop</info>
 
-                Then: <comment>kekkai install claude --write</comment>, and <comment>kekkai doctor</comment> to check the setup.
+                Then: <comment>kekkai install <agent> --write</comment> (claude or cursor), and <comment>kekkai doctor</comment> to check the setup.
                 HELP);
         $this->addRootOption();
     }
@@ -80,7 +80,7 @@ final class InitCommand extends Command
         }
 
         file_put_contents($file, self::TEMPLATE);
-        $output->writeln('kekkai.yaml written. Next: <info>kekkai install claude</info> to connect Claude Code.');
+        $output->writeln('kekkai.yaml written. Next: <info>kekkai install claude</info> or <info>kekkai install cursor</info> to connect your agent.');
 
         return Command::SUCCESS;
     }

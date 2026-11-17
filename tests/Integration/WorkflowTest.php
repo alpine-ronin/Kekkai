@@ -6,6 +6,7 @@ namespace Kekkai\Tests\Integration;
 
 use Kekkai\Check\Reviewer;
 use Kekkai\Hook\ClaudeCode;
+use Kekkai\Hook\Cursor;
 use Kekkai\Mcp\McpServer;
 use Kekkai\Process;
 use Kekkai\Project;
@@ -89,6 +90,41 @@ final class WorkflowTest extends TestCase
 
         self::assertFileExists($this->root . '/.kekkai/log.jsonl');
         self::assertSame("*\n", file_get_contents($this->root . '/.kekkai/.gitignore'));
+    }
+
+    public function testCursorWorkflow(): void
+    {
+        $server = new McpServer(Project::at($this->root));
+        $workspace = ['workspace_roots' => [$this->root]];
+
+        $before = Cursor::preToolUse([...$workspace, 'tool_name' => 'Write', 'tool_input' => ['file_path' => $this->root . '/src/Catalog/Product.php']]);
+        self::assertIsArray($before);
+        self::assertSame('deny', $before['permission']);
+        self::assertIsString($before['agent_message']);
+        self::assertStringContainsString('call the Kekkai tool declare_scope', $before['agent_message']);
+        self::assertStringContainsString("needs the user's approval", $before['agent_message']);
+
+        $this->call($server, 'declare_scope', ['intent' => 'Add a price to products', 'paths' => ['catalog']]);
+
+        self::assertNull(Cursor::preToolUse([...$workspace, 'tool_name' => 'Write', 'tool_input' => ['file_path' => $this->root . '/src/Catalog/Price.php']]));
+        self::assertNull(Cursor::preToolUse([...$workspace, 'tool_name' => 'Read', 'tool_input' => ['file_path' => $this->root . '/src/Billing/Invoice.php']]));
+
+        $outside = Cursor::preToolUse([...$workspace, 'tool_name' => 'Write', 'tool_input' => ['file_path' => $this->root . '/src/Billing/Invoice.php']]);
+        self::assertIsArray($outside);
+        self::assertSame('deny', $outside['permission']);
+        self::assertIsString($outside['agent_message']);
+        self::assertStringContainsString('src/Billing/Invoice.php is outside the declared scope', $outside['agent_message']);
+        self::assertStringNotContainsString("needs the user's approval", $outside['agent_message']);
+
+        self::assertNull(Cursor::stop([...$workspace, 'status' => 'completed']));
+
+        file_put_contents($this->root . '/src/Billing/Invoice.php', "<?php\n// changed through sed\n");
+        $stop = Cursor::stop([...$workspace, 'status' => 'completed', 'loop_count' => 0]);
+        self::assertIsArray($stop);
+        self::assertIsString($stop['followup_message']);
+        self::assertStringContainsString('src/Billing/Invoice.php', $stop['followup_message']);
+        self::assertNull(Cursor::stop([...$workspace, 'status' => 'completed', 'loop_count' => 1]));
+        self::assertNull(Cursor::stop([...$workspace, 'status' => 'aborted', 'loop_count' => 0]));
     }
 
     public function testInitializeAndList(): void

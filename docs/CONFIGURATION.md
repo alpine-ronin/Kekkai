@@ -85,5 +85,5 @@ reason, which is exactly what a reviewer wants to see.
   whole log.
 - Skipped when no file changed, and with `--no-checks`.
 
-The stop hook's own timeout in `.claude/settings.json` (900 seconds, written by `kekkai install`) must cover all the
+The stop hook's own timeout in the agent's hook file (900 seconds, written by `kekkai install`) must cover all the
 checks together.

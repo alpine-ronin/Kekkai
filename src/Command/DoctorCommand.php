@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kekkai\Command;
 
+use Kekkai\Hook\Agent;
 use Kekkai\Process;
 use Kekkai\Project;
 use Kekkai\Scope\ScopeStore;
@@ -73,20 +74,17 @@ final class DoctorCommand extends Command
             }
         }
 
-        $settings = self::json($project->root . '/.claude/settings.json');
-        $hooks = \is_array($settings['hooks'] ?? null) ? $settings['hooks'] : [];
-        $results[] = self::hasHook($hooks, 'PreToolUse', 'hook pre-tool-use')
-            ? [self::OK, 'Claude Code PreToolUse hook: edits are checked before they happen']
-            : [self::FAIL, 'No Kekkai PreToolUse hook in .claude/settings.json: edits outside the scope go through', 'kekkai install claude --write'];
-        $results[] = self::hasHook($hooks, 'Stop', 'hook stop')
-            ? [self::OK, 'Claude Code Stop hook: the diff is reviewed before the agent stops']
-            : [self::WARN, 'No Kekkai Stop hook: shell writes and failing checks are not caught', 'kekkai install claude --write'];
-
-        $mcp = self::json($project->root . '/.mcp.json');
-        $servers = \is_array($mcp['mcpServers'] ?? null) ? $mcp['mcpServers'] : [];
-        $results[] = isset($servers['kekkai'])
-            ? [self::OK, 'MCP server kekkai in .mcp.json: the agent can declare and widen its scope']
-            : [self::WARN, 'No kekkai server in .mcp.json: the agent cannot declare its scope itself', 'kekkai install claude --write'];
+        $connected = [];
+        foreach (Agent::cases() as $agent) {
+            $settings = self::json($project->root . '/' . $agent->hooksFile());
+            if ($agent->hasHook($settings, Agent::PRE_TOOL_USE) || $agent->hasHook($settings, Agent::STOP)) {
+                $connected[] = $agent;
+                array_push($results, ...self::agentChecks($project->root, $agent, $settings));
+            }
+        }
+        if ($connected === []) {
+            $results[] = [self::FAIL, 'No agent is connected: edits outside the scope go through', sprintf('kekkai install <%s> --write (other agents: see docs/HOOKS.md)', implode('|', Agent::values()))];
+        }
 
         $scope = $project->scope();
         $results[] = $scope === null
@@ -125,21 +123,28 @@ final class DoctorCommand extends Command
     }
 
     /**
-     * @param array<mixed> $hooks
-     * @param string $event
-     * @param string $needle
+     * @param array<mixed> $settings
+     *
+     * @return list<array{0: string, 1: string, 2?: string}>
      */
-    private static function hasHook(array $hooks, string $event, string $needle): bool
+    private static function agentChecks(string $root, Agent $agent, array $settings): array
     {
-        foreach (\is_array($hooks[$event] ?? null) ? $hooks[$event] : [] as $matcher) {
-            foreach (\is_array($matcher) && \is_array($matcher['hooks'] ?? null) ? $matcher['hooks'] : [] as $hook) {
-                if (\is_array($hook) && \is_string($hook['command'] ?? null) && str_contains($hook['command'], 'kekkai') && str_contains($hook['command'], $needle)) {
-                    return true;
-                }
-            }
-        }
+        $install = 'kekkai install ' . $agent->value . ' --write';
+        $results = [];
+        $results[] = $agent->hasHook($settings, Agent::PRE_TOOL_USE)
+            ? [self::OK, sprintf('%s edit hook: edits are checked before they happen', $agent->label())]
+            : [self::FAIL, sprintf('No Kekkai edit hook in %s: %s edits outside the scope go through', $agent->hooksFile(), $agent->label()), $install];
+        $results[] = $agent->hasHook($settings, Agent::STOP)
+            ? [self::OK, sprintf('%s stop hook: the diff is reviewed before the agent stops', $agent->label())]
+            : [self::WARN, sprintf('No Kekkai stop hook in %s: shell writes and failing checks are not caught', $agent->hooksFile()), $install];
 
-        return false;
+        $mcp = self::json($root . '/' . $agent->mcpFile());
+        $servers = \is_array($mcp['mcpServers'] ?? null) ? $mcp['mcpServers'] : [];
+        $results[] = isset($servers['kekkai'])
+            ? [self::OK, sprintf('MCP server kekkai in %s: the agent can declare and widen its scope', $agent->mcpFile())]
+            : [self::WARN, sprintf('No kekkai server in %s: %s cannot declare its scope itself', $agent->mcpFile(), $agent->label()), $install];
+
+        return $results;
     }
 
     /**

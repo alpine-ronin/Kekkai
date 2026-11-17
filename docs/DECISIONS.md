@@ -27,9 +27,18 @@ foresaw). Allowing it silently would make the scope meaningless. A widening need
 and shows in every report. A redeclaration by the agent is refused, so it cannot swap a narrow scope for a wide one
 without leaving a trace.
 
+## One core, one adapter per agent
+
+The rules, the scope and the review know nothing about any agent: `Guard` asks them. Each agent with hooks gets a
+small adapter that only translates its JSON. Kekkai started with Claude Code alone; supporting Cursor took one
+adapter and no change to the rules. Where an agent cannot express a decision (Cursor does not enforce *ask* before a
+tool runs), the adapter takes the safe side: it refuses and tells the agent to ask.
+
+*Revisit if* agents agree on one hook format.
+
 ## The hook never answers `allow`
 
-In Claude Code, a `PreToolUse` hook answering `allow` skips the permission prompt. Kekkai only restricts: for an edit
+In Claude Code, a `PreToolUse` hook answering `allow` skips the permission prompt, and other agents behave alike. Kekkai only restricts: for an edit
 in the scope it answers nothing, and the user's own permissions apply as before. Installing Kekkai can never give the
 agent more rights than it had.
 
@@ -41,8 +50,9 @@ shell writes is Airlock's job.
 
 ## The stop hook sends the agent back once
 
-A failing check sends the agent back with the report. If it fails again, Claude Code's `stop_hook_active` flag tells
-Kekkai the agent is already continuing because of a stop hook, and Kekkai lets it stop. A check that can never pass
+A failing check sends the agent back with the report. If it fails again, the agent's own flag (`stop_hook_active` in
+Claude Code, `loop_count` in Cursor) tells Kekkai the agent is already continuing because of a stop hook, and Kekkai
+lets it stop. A check that can never pass
 (a broken test suite, a flaky check) would otherwise keep the agent in an endless, costly loop.
 
 ## Kekkai's own files are out of reach

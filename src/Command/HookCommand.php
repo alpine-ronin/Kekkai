@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Kekkai\Command;
 
-use Kekkai\Hook\ClaudeCode;
+use Kekkai\Hook\Agent;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -12,7 +12,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'hook', description: 'Claude Code hooks (JSON on stdin): pre-tool-use, stop')]
+#[AsCommand(name: 'hook', description: 'Agent hooks (JSON on stdin): pre-tool-use, stop')]
 final class HookCommand extends Command
 {
     /** @var resource|null */
@@ -30,21 +30,30 @@ final class HookCommand extends Command
     protected function configure(): void
     {
         $this->setHelp(<<<'HELP'
-                The Claude Code hooks, written into .claude/settings.json by <comment>kekkai install claude --write</comment>.
-                They read the hook's JSON on stdin and print Claude Code's answer, or nothing.
+                The agent hooks, written by <comment>kekkai install <agent> --write</comment>. They read the hook's JSON on stdin
+                and print the agent's answer, or nothing. --agent says whose format: claude (default) or cursor.
 
-                  <info>pre-tool-use</info>   on Edit, Write, MultiEdit, NotebookEdit: refuses an edit outside the scope, asks for a
-                                 protected file, never answers allow (Claude Code's own permissions then apply)
+                  <info>pre-tool-use</info>   before a file is edited: refuses an edit outside the scope, asks for a protected file,
+                                 never answers allow (the agent's own permissions then apply)
                   <info>stop</info>           reviews the diff and runs the checks; when they fail, sends the agent back once
                 HELP);
         $this
             ->addArgument('event', InputArgument::REQUIRED, 'pre-tool-use or stop')
+            ->addOption('agent', 'a', InputOption::VALUE_REQUIRED, 'Hook format: ' . implode(', ', Agent::values()), Agent::Claude->value)
             ->addOption('no-checks', null, InputOption::VALUE_NONE, 'stop: only the scope, without the checks')
-            ->addOption('root', 'r', InputOption::VALUE_REQUIRED, 'Project root (default: $CLAUDE_PROJECT_DIR, else the cwd of the hook)');
+            ->addOption('root', 'r', InputOption::VALUE_REQUIRED, 'Project root (default: the project the agent reports, else the cwd of the hook)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $name = $input->getOption('agent');
+        $agent = \is_string($name) ? Agent::tryFrom($name) : null;
+        if ($agent === null) {
+            $output->writeln(sprintf('<error>Unknown agent: use %s.</error>', implode(' or ', Agent::values())));
+
+            return Command::INVALID;
+        }
+
         $raw = stream_get_contents($this->stdin ?? \STDIN);
         $data = json_decode(\is_string($raw) ? $raw : '', true);
         $data = \is_array($data) ? $data : [];
@@ -52,8 +61,8 @@ final class HookCommand extends Command
         $root = \is_string($root) ? $root : null;
 
         $response = match ($input->getArgument('event')) {
-            'pre-tool-use' => ClaudeCode::preToolUse($data, $root),
-            'stop' => ClaudeCode::stop($data, $root, !$input->getOption('no-checks')),
+            Agent::PRE_TOOL_USE => $agent->preToolUse($data, $root),
+            Agent::STOP => $agent->stop($data, $root, !$input->getOption('no-checks')),
             default => false,
         };
 

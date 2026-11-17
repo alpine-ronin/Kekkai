@@ -37,7 +37,7 @@ final class Application extends Console
         return sprintf(<<<'HELP'
             <info>kekkai</info> %s  keeps an AI coding agent inside the scope it declared
 
-            Start in a project:  <comment>kekkai init</comment>, then <comment>kekkai install claude --write</comment>, then <comment>kekkai doctor</comment>
+            Start in a project:  <comment>kekkai init</comment>, then <comment>kekkai install claude --write</comment> (or cursor), then <comment>kekkai doctor</comment>
             During a task:       edits outside the declared scope are refused, the diff is reviewed at stop
             Yourself:            <comment>kekkai scope</comment>, <comment>kekkai check</comment>, <comment>kekkai scope clear</comment> when the task is done
             Docs:                https://github.com/alpine-ronin/kekkai

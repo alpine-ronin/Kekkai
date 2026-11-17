@@ -9,6 +9,7 @@
         "scope",
         "mcp",
         "claude-code",
+        "cursor",
         "hooks",
         "code-review",
         "ddd",
