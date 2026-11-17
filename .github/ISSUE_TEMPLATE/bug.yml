@@ -1,0 +1,54 @@
+name: Bug
+description: Kekkai did something it should not, or did not do what the README says.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 'A way for an agent to edit outside its scope unnoticed is a vulnerability: report it privately, as SECURITY.md says, not here.'
+  - type: input
+    id: version
+    attributes:
+      label: Kekkai version
+      description: What `kekkai --version` prints.
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System
+      placeholder: Ubuntu 24.04, x86_64
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent and its version
+      placeholder: Claude Code 2.1.326, Cursor 3.29.15
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What you did
+      description: The shortest steps that show it, with your kekkai.yaml and the declared scope.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: What the agent, the hook or `kekkai check` showed.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: What kekkai doctor says
+      description: Run it from the project.
+      render: text

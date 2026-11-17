@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit's reviews of this repository. CONTRIBUTING.md holds the coding rules it checks against.
+language: en-US
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+  path_filters:
+    - "!composer.lock"
+    - "!docs/brand/**"
+    - "!docs/assets/**"
+  path_instructions:
+    - path: "src/{Gate,Scope,Config}/**/*.php"
+      instructions: >-
+        The scope boundary. Look first for a path that would be judged in the scope while it is not (relative paths,
+        "..", symbolic links, case, globs that match too much), a way for the agent to replace or empty its scope
+        instead of widening it, and Kekkai's own files (kekkai.yaml, .kekkai/, .git/) becoming editable. Each fix
+        needs a test that fails without it, and its row in docs/SPEC.md.
+    - path: "src/Hook/**/*.php"
+      instructions: >-
+        Hook input comes from the agent and is untrusted. The adapters only translate JSON: every decision comes from
+        Guard. A hook never answers "allow", never lets an edit through when Kekkai cannot decide, and sends the agent
+        back at most once at stop.
+    - path: "src/Mcp/**/*.php"
+      instructions: >-
+        Tool arguments come from the agent: a declared scope can only be widened, with a reason, and never cover the
+        whole project.
+    - path: "src/Update/**/*.php"
+      instructions: >-
+        Self-update replaces the running executable: it must verify the checksum (and the attestation when available)
+        before replacing anything, and fail closed.
+    - path: "tests/**/*.php"
+      instructions: >-
+        Tests never reach the network. Final test classes, assertSame, one behaviour per test.
+    - path: ".github/workflows/**"
+      instructions: >-
+        Least privilege: permissions declared per workflow, actions pinned to a commit, no secret printed, no
+        untrusted input interpolated into a run step.
+    - path: "install.sh"
+      instructions: >-
+        POSIX sh, runs piped into sh on machines we do not know: it must verify the checksum before installing and
+        fail closed.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - CONTRIBUTING.md
+
+chat:
+  auto_reply: true
