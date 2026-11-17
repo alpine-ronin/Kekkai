@@ -4,7 +4,7 @@ labels: [bug]
 body:
   - type: markdown
     attributes:
-      value: 'A way for an agent to edit outside its scope unnoticed is a vulnerability: report it privately, as SECURITY.md says, not here.'
+      value: 'A way for the agent to edit outside its scope without a refusal, to change its scope without the tools, or to make the hook allow what its permissions would ask, is a vulnerability: report it privately, as [SECURITY.md](https://github.com/alpine-ronin/kekkai/blob/main/SECURITY.md) says, not here.'
   - type: input
     id: version
     attributes:
