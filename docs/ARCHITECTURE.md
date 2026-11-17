@@ -30,7 +30,10 @@ src/
 │   ├── Report.php         passed(), text and JSON
 │   └── CheckResult.php
 ├── Hook/
-│   └── ClaudeCode.php     PreToolUse and Stop, JSON in, JSON out
+│   ├── Guard.php          what every agent's hooks ask: may this file be edited, may the agent stop
+│   ├── Agent.php          the agents with hooks: their files, their install, their dispatch
+│   ├── ClaudeCode.php     Claude Code's PreToolUse and Stop JSON, in and out
+│   └── Cursor.php         Cursor's preToolUse and stop JSON, in and out
 ├── Mcp/
 │   └── McpServer.php      JSON-RPC over stdio, four tools
 ├── Update/
@@ -57,25 +60,33 @@ binaries.yml: the PHAR (built on PHP 8.3) ─▶ static PHP 8.5 runtime + PHAR p
 ## Flow of an edit
 
 ```text
-Claude Code ──PreToolUse JSON──▶ kekkai hook pre-tool-use
-                                   │ Project::at()   reads kekkai.yaml, .kekkai/scope.json
-                                   │ Gate::decide()  rules 1 to 7
-                                   ▼
-             ◀── nothing (allow) or {"permissionDecision": "ask" | "deny"}
+agent ──edit hook JSON──▶ kekkai hook pre-tool-use [--agent cursor]
+                            │ ClaudeCode | Cursor   the file path from the agent's JSON
+                            │ Guard::edit()
+                            │   Project::at()       reads kekkai.yaml, .kekkai/scope.json
+                            │   Gate::decide()      rules 1 to 7
+                            ▼
+      ◀── nothing (allow) or the refusal in the agent's format
 ```
 
 ## Flow of a stop
 
 ```text
-Claude Code ──Stop JSON──▶ kekkai hook stop
-                             │ stop_hook_active? → nothing
-                             │ Reviewer::review('HEAD')
+agent ──stop hook JSON──▶ kekkai hook stop [--agent cursor]
+                             │ already sent back once? → nothing
+                             │ Guard::review() → Reviewer::review('HEAD')
                              │   ChangedFiles::since()   git diff + untracked
                              │   Gate::decide() per file
                              │   checks of kekkai.yaml   sh -c, with KEKKAI_CHANGED_FILES
                              ▼
-             ◀── nothing (passed) or {"decision": "block", "reason": report}
+             ◀── nothing (passed) or the report, as the agent's "keep going" answer
 ```
+
+## Adding an agent
+
+An agent whose hooks can refuse a tool call gets an adapter: a class in `src/Hook/` that takes the file path from its
+JSON, asks `Guard::edit()` or `Guard::review()`, and answers in its format; then a case in `Agent` for its files,
+its install and its doctor lines. The rules, the scope and the review do not change.
 
 ## Design rules
 
@@ -98,7 +109,7 @@ Claude Code ──Stop JSON──▶ kekkai hook stop
   `WorkflowTest`: a whole task, from no scope to a passing review.
 - `tests/Command`: every command through Symfony's `CommandTester`, `self-update` against a release on disk (latest,
   a version, edge, a tampered file, a missing release).
-- `tools/smoke.sh`: a built executable through a whole task, as Claude Code drives it; run in CI on the source, the
+- `tools/smoke.sh`: a built executable through a whole task, as an agent drives it; run in CI on the source, the
   PHAR and each binary.
 
 `composer check` runs the code style, PHPStan at level max and the tests, as the CI does on PHP 8.3, 8.4 and 8.5.

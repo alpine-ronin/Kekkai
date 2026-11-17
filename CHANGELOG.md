@@ -3,6 +3,17 @@
 Kekkai follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version (0.2.0) may change the
 configuration, the CLI or the MCP tools; each change is listed here.
 
+## Unreleased
+
+### Agents
+- Cursor: `kekkai install cursor [--write]` writes the hooks to `.cursor/hooks.json` and the MCP server to
+  `.cursor/mcp.json`; `kekkai hook pre-tool-use | stop --agent cursor` answers in Cursor's format. An edit Kekkai
+  would ask about is refused in Cursor, which does not enforce *ask*, and the agent is told to ask the user.
+- `kekkai doctor` checks every connected agent; with none, it says how to connect one.
+- The rules and the review are shared by every agent (`Guard`); each agent's hooks only translate its JSON.
+- The docs describe Kekkai for any coding agent: hooks for Claude Code and Cursor, the MCP server and `kekkai check`
+  for the others.
+
 ## 0.1.0 (2026-11-16)
 
 The first release.

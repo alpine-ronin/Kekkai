@@ -1,13 +1,13 @@
 # Specification
 
 What Kekkai does, precisely: the words it uses, the order in which it decides, the files it reads and writes, and
-what it answers to Claude Code. Everything here is covered by the tests in `tests/`.
+what it answers to each agent's hooks. Everything here is covered by the tests in `tests/`.
 
 ## Words
 
 | Word | Meaning |
 |---|---|
-| **Project** | The directory Kekkai guards: `--root`, else `$CLAUDE_PROJECT_DIR`, else the `cwd` of the hook, else the current directory. Resolved with `realpath()`. |
+| **Project** | The directory Kekkai guards: `--root`, else the project the agent reports (`$CLAUDE_PROJECT_DIR` for Claude Code; `$CURSOR_PROJECT_DIR`, else the first of `workspace_roots`, for Cursor), else the `cwd` of the hook, else the current directory. Resolved with `realpath()`. |
 | **Path** | A path relative to the project root, with `/` separators. Absolute paths given by the agent are made relative; a path that leads outside the project has none. |
 | **Pattern** | A glob on paths (see [Patterns](#patterns)). |
 | **Zone** | A named list of patterns in `kekkai.yaml`, usually one per bounded context. |
@@ -135,25 +135,27 @@ another way than the edit tools: the shell, a generator, a formatter). Everythin
 
 `--format json` gives the report as [schemas/report.schema.json](schemas/report.schema.json).
 
-## Claude Code hooks
+## Agent hooks
 
-Both hooks read the hook's JSON on stdin, always exit with code 0, and print nothing when they have nothing to say.
+Every hook reads the agent's JSON on stdin, always exits with code 0, and prints nothing when it has nothing to say.
+`--agent` gives the format: `claude` (the default) or `cursor`. The decisions are the same for every agent; only the
+JSON differs.
 
-### `kekkai hook pre-tool-use`
+### Claude Code: `kekkai hook pre-tool-use`
 
-Registered on `Edit|Write|MultiEdit|NotebookEdit`. Reads `tool_name` and `tool_input.file_path`
+Registered on `PreToolUse`, `Edit|Write|MultiEdit|NotebookEdit`. Reads `tool_name` and `tool_input.file_path`
 (`tool_input.notebook_path` for `NotebookEdit`); ignores any other tool.
 
 | Decision | Output |
 |---|---|
-| `allow` | Nothing: Claude Code's own permissions then apply. Kekkai never answers `allow`, which would bypass them. |
+| `allow` | Nothing: the agent's own permissions then apply. Kekkai never answers `allow`, which would bypass them. |
 | `ask` | `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask", "permissionDecisionReason": "Kekkai: …"}}` |
 | `deny` | The same with `"permissionDecision": "deny"`: the edit is not made, and the reason goes to the agent. |
 
 When Kekkai cannot decide (invalid `kekkai.yaml`, missing project), it answers `ask` with the error, so the user
 decides: it never lets an edit through unchecked, and never blocks the agent without a word.
 
-### `kekkai hook stop [--no-checks]`
+### Claude Code: `kekkai hook stop [--no-checks]`
 
 Registered on `Stop`. Runs the review against `HEAD`.
 
@@ -164,6 +166,30 @@ Registered on `Stop`. Runs the review against `HEAD`.
   is sent back **once**; a check that can never pass does not keep it in a loop.
 - Error (not a git repository, invalid configuration): nothing, so the stop hook never prevents the agent from
   stopping because of Kekkai itself.
+
+### Cursor: `kekkai hook pre-tool-use --agent cursor`
+
+Registered on `preToolUse`, matcher `Write`: Cursor sends every file creation and change as `Write`. Reads
+`tool_name` and `tool_input.file_path`; ignores any other tool.
+
+| Decision | Output |
+|---|---|
+| `allow` | Nothing. |
+| `ask` | `{"permission": "deny", "agent_message": "Kekkai: …\nThis edit needs the user's approval: stop and ask them.", "user_message": "…"}`: Cursor does not enforce `ask` before a tool runs, so the edit is refused and the agent told to ask. |
+| `deny` | `{"permission": "deny", "agent_message": "Kekkai: …", "user_message": "Kekkai: …"}` |
+
+When Kekkai cannot decide, the answer is the `ask` one, with the error.
+
+### Cursor: `kekkai hook stop --agent cursor [--no-checks]`
+
+Registered on `stop` with `loop_limit: 1`. Runs the review against `HEAD`.
+
+- Passed: nothing.
+- Failed: `{"followup_message": "<the report>\n\nFix what failed before finishing: …"}`, which Cursor sends to the
+  agent as the next message.
+- Input with a `loop_count` other than 0, or a `status` other than `completed` (aborted, error): nothing. The agent
+  is sent back **once**.
+- Error: nothing, as for Claude Code.
 
 ## MCP server
 

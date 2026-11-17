@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Kekkai\Command;
 
-use Kekkai\Hook\ClaudeCode;
+use Kekkai\Hook\Agent;
 use Kekkai\Path;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -13,7 +13,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'install', description: 'Connect Claude Code: hooks and MCP server, printed or written (--write)')]
+#[AsCommand(name: 'install', description: 'Connect an agent (claude, cursor): hooks and MCP server, printed or written (--write)')]
 final class InstallCommand extends Command
 {
     use RootOption;
@@ -21,70 +21,58 @@ final class InstallCommand extends Command
     protected function configure(): void
     {
         $this->setHelp(<<<'HELP'
-                Connects Claude Code to Kekkai in this project: the PreToolUse and Stop hooks in .claude/settings.json, the
-                MCP server in .mcp.json. Without --write, prints them. --write merges into the files and keeps what is there.
+                Connects an agent to Kekkai in this project: its edit and stop hooks, and the MCP server. Without --write,
+                prints them. --write merges into the files and keeps what is there.
 
-                  <info>kekkai install claude</info>
+                  <info>claude</info>   Claude Code: hooks in .claude/settings.json, server in .mcp.json
+                  <info>cursor</info>   Cursor: hooks in .cursor/hooks.json, server in .cursor/mcp.json
+
+                  <info>kekkai install cursor</info>
                   <info>kekkai install claude --write</info>
                   <info>kekkai install claude --write --binary "vendor/bin/kekkai"</info>
 
-                Commit both files so that the team works under the same rules.
+                Other agents: register <comment>kekkai serve</comment> as a stdio MCP server and run <comment>kekkai check</comment> before
+                finishing and in CI. Commit the files so that the team works under the same rules.
                 HELP);
         $this
-            ->addArgument('agent', InputArgument::OPTIONAL, 'claude', 'claude')
-            ->addOption('write', 'w', InputOption::VALUE_NONE, 'Merge the hooks into .claude/settings.json and the server into .mcp.json')
+            ->addArgument('agent', InputArgument::OPTIONAL, implode(' or ', Agent::values()), Agent::Claude->value)
+            ->addOption('write', 'w', InputOption::VALUE_NONE, 'Merge the hooks and the server into the agent\'s files')
             ->addOption('binary', null, InputOption::VALUE_REQUIRED, 'Command that runs kekkai (default: this executable)');
         $this->addRootOption();
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if ($input->getArgument('agent') !== 'claude') {
-            $output->writeln('<error>Only Claude Code (claude) has hooks for now. Other MCP clients: run `kekkai serve` as a stdio server and `kekkai check` in CI.</error>');
+        $name = $input->getArgument('agent');
+        $name = \is_string($name) ? $name : '';
+        $agent = Agent::tryFrom($name);
+        if ($agent === null) {
+            $output->writeln(sprintf('<error>No hooks for %s: use %s. Other MCP clients: run `kekkai serve` as a stdio server and `kekkai check` before finishing and in CI.</error>', $name, implode(' or ', Agent::values())));
 
             return Command::INVALID;
         }
 
         $project = $this->project($input);
         $binary = $input->getOption('binary');
-        $binary = \is_string($binary) ? $binary : self::binary($project->root);
+        $binary = \is_string($binary) ? $binary : self::binary($project->root, $agent);
 
-        $settings = self::settings($binary);
-        $mcp = ['mcpServers' => ['kekkai' => ['command' => 'sh', 'args' => ['-c', $binary . ' serve']]]];
+        $hooks = $agent->hooks($binary);
+        $mcp = $agent->mcpServer($binary);
 
         if (!$input->getOption('write')) {
-            $output->writeln(['# .claude/settings.json', self::json($settings), '', '# .mcp.json', self::json($mcp), '', 'Write both with: kekkai install claude --write'], OutputInterface::OUTPUT_RAW);
+            $output->writeln(['# ' . $agent->hooksFile(), self::json($hooks), '', '# ' . $agent->mcpFile(), self::json($mcp), '', 'Write both with: kekkai install ' . $agent->value . ' --write'], OutputInterface::OUTPUT_RAW);
 
             return Command::SUCCESS;
         }
 
-        $settingsFile = $project->root . '/.claude/settings.json';
-        $this->merge($settingsFile, $settings);
-        $this->merge($project->root . '/.mcp.json', $mcp);
-        $output->writeln(['Hooks written to .claude/settings.json, server to .mcp.json.', 'Restart Claude Code in this project, then approve the kekkai MCP server.']);
+        $this->merge($project->root . '/' . $agent->hooksFile(), $hooks);
+        $this->merge($project->root . '/' . $agent->mcpFile(), $mcp);
+        $output->writeln([sprintf('Hooks written to %s, server to %s.', $agent->hooksFile(), $agent->mcpFile()), $agent->restartHint()]);
 
         return Command::SUCCESS;
     }
 
-    /**
-     * @param string $binary
-     *
-     * @return array<string, mixed>
-     */
-    public static function settings(string $binary): array
-    {
-        return [
-            'hooks' => [
-                'PreToolUse' => [['matcher' => implode('|', array_keys(ClaudeCode::EDIT_TOOLS)), 'hooks' => [['type' => 'command', 'command' => $binary . ' hook pre-tool-use']]]],
-                'Stop' => [['hooks' => [['type' => 'command', 'command' => $binary . ' hook stop', 'timeout' => 900]]]],
-            ],
-        ];
-    }
-
-    /**
-     * @param string $root
-     */
-    private static function binary(string $root): string
+    private static function binary(string $root, Agent $agent): string
     {
         $script = $_SERVER['SCRIPT_FILENAME'] ?? null;
         $real = \is_string($script) ? realpath($script) : false;
@@ -94,7 +82,7 @@ final class InstallCommand extends Command
 
         $relative = Path::relative($root, $real);
         if ($relative !== null && $relative !== '') {
-            return '"$CLAUDE_PROJECT_DIR"/' . $relative;
+            return $agent->projectPrefix() . $relative;
         }
 
         $which = trim((string) shell_exec('command -v kekkai 2>/dev/null'));

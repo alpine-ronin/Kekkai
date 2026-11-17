@@ -32,7 +32,7 @@ The script:
 | `KEKKAI_INSTALL_DIR=/usr/local/bin` | Another directory |
 | `KEKKAI_RELEASES_URL` | Another place to download from (a mirror, a test) |
 
-Then, in the project: `kekkai init && kekkai install claude --write && kekkai doctor`.
+Then, in the project: `kekkai init && kekkai install claude --write && kekkai doctor` (`install cursor` for Cursor).
 
 ### By hand
 
@@ -59,7 +59,7 @@ kekkai self-update --check      # exit code 1 when a newer release exists
 ```
 
 The same checks as the install script, then the new file takes the place of the running one. An MCP server already
-running keeps the old version: restart your MCP client (in Claude Code, `/mcp`, then reconnect `kekkai`). The hooks
+running keeps the old version: restart your MCP client (in Claude Code, `/mcp`, then reconnect `kekkai`; in Cursor, toggle the server in its settings). The hooks
 use the new version from their next call.
 
 ## With Composer
@@ -73,10 +73,10 @@ Kekkai is not on Packagist yet. Until then, declare the repository in the projec
 ```bash
 composer require --dev alpine-ronin/kekkai:^0.1
 vendor/bin/kekkai init
-vendor/bin/kekkai install claude --write
+vendor/bin/kekkai install claude --write   # or cursor
 ```
 
-The hooks then call `"$CLAUDE_PROJECT_DIR"/vendor/bin/kekkai`: every developer of the team runs the version locked in
+The hooks then call `vendor/bin/kekkai` in the project (`"$CLAUDE_PROJECT_DIR"/vendor/bin/kekkai` for Claude Code): every developer of the team runs the version locked in
 `composer.lock`. Kekkai requires `symfony/console` and `symfony/yaml` 7; with Symfony 6 in the project, use the binary
 or the PHAR instead.
 
@@ -114,5 +114,6 @@ The second command prints a `deny`: `README.md` is outside the scope `src/`.
 
 ## Uninstall
 
-Remove the `kekkai` entries from `.claude/settings.json` and `.mcp.json`, then `kekkai.yaml` and `.kekkai/` from the
+Remove the `kekkai` entries from the agent's files (`.claude/settings.json` and `.mcp.json`, or `.cursor/hooks.json`
+and `.cursor/mcp.json`), then `kekkai.yaml` and `.kekkai/` from the
 project, and `~/.local/bin/kekkai`.

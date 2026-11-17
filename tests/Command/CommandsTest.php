@@ -118,6 +118,17 @@ final class CommandsTest extends TestCase
 
         $unknown = new CommandTester(new HookCommand(fopen('php://memory', 'r') ?: null));
         self::assertSame(2, $unknown->execute(['event' => 'post-tool-use', '--root' => $this->project->root]));
+
+        $cursorStdin = fopen('php://memory', 'r+');
+        self::assertIsResource($cursorStdin);
+        fwrite($cursorStdin, (string) json_encode(['tool_name' => 'Write', 'tool_input' => ['file_path' => $this->project->root . '/src/Billing/Invoice.php']]));
+        rewind($cursorStdin);
+        $cursor = new CommandTester(new HookCommand($cursorStdin));
+        self::assertSame(0, $cursor->execute(['event' => 'pre-tool-use', '--agent' => 'cursor', '--root' => $this->project->root]));
+        self::assertSame('deny', Json::decode($cursor->getDisplay(), 'permission'));
+
+        $unknownAgent = new CommandTester(new HookCommand(fopen('php://memory', 'r') ?: null));
+        self::assertSame(2, $unknownAgent->execute(['event' => 'stop', '--agent' => 'aider', '--root' => $this->project->root]));
     }
 
     public function testInstallPrintsThenWritesWithoutLosingAnything(): void
@@ -145,15 +156,34 @@ final class CommandsTest extends TestCase
         self::assertSame('phpgraph', Json::decode($mcp, 'mcpServers', 'phpgraph', 'command'));
         self::assertSame('sh', Json::decode($mcp, 'mcpServers', 'kekkai', 'command'));
 
-        self::assertSame(2, $this->command('install', ['agent' => 'cursor'])->getStatusCode());
+        self::assertSame(2, $this->command('install', ['agent' => 'aider'])->getStatusCode());
+    }
+
+    public function testInstallCursor(): void
+    {
+        $this->command('install', ['agent' => 'cursor', '--write' => true, '--binary' => 'kekkai']);
+        $this->command('install', ['agent' => 'cursor', '--write' => true, '--binary' => 'kekkai']);
+
+        $hooks = $this->project->read('.cursor/hooks.json');
+        self::assertSame(1, Json::decode($hooks, 'version'));
+        self::assertSame('kekkai hook pre-tool-use --agent cursor', Json::decode($hooks, 'hooks', 'preToolUse', 0, 'command'));
+        self::assertSame('Write', Json::decode($hooks, 'hooks', 'preToolUse', 0, 'matcher'));
+        self::assertNull(Json::decode($hooks, 'hooks', 'preToolUse', 1));
+        self::assertSame('kekkai hook stop --agent cursor', Json::decode($hooks, 'hooks', 'stop', 0, 'command'));
+        self::assertSame('sh', Json::decode($this->project->read('.cursor/mcp.json'), 'mcpServers', 'kekkai', 'command'));
+
+        $doctor = $this->command('doctor');
+        self::assertStringContainsString('✓ Cursor edit hook', $doctor->getDisplay());
+        self::assertStringContainsString('✓ MCP server kekkai in .cursor/mcp.json', $doctor->getDisplay());
+        self::assertStringNotContainsString('Claude Code', $doctor->getDisplay());
     }
 
     public function testDoctor(): void
     {
         $before = $this->command('doctor');
         self::assertSame(1, $before->getStatusCode());
-        self::assertStringContainsString('✗ No Kekkai PreToolUse hook', $before->getDisplay());
-        self::assertStringContainsString('→ kekkai install claude --write', $before->getDisplay());
+        self::assertStringContainsString('✗ No agent is connected', $before->getDisplay());
+        self::assertStringContainsString('→ kekkai install <claude|cursor> --write', $before->getDisplay());
 
         $this->command('init');
         $this->project->write('kekkai.yaml', $this->project->read('kekkai.yaml') . "  - {name: graph, run: definitely-not-installed-tool check}\n");
@@ -161,7 +191,7 @@ final class CommandsTest extends TestCase
 
         $after = $this->command('doctor');
         self::assertSame(0, $after->getStatusCode(), $after->getDisplay());
-        self::assertStringContainsString('✓ Claude Code PreToolUse hook', $after->getDisplay());
+        self::assertStringContainsString('✓ Claude Code edit hook', $after->getDisplay());
         self::assertStringContainsString('✓ MCP server kekkai in .mcp.json', $after->getDisplay());
         self::assertStringContainsString('! Check "graph": definitely-not-installed-tool is not on the PATH', $after->getDisplay());
     }

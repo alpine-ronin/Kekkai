@@ -25,7 +25,7 @@ jobs:
       - run: composer test
       - run: composer smoke
 
-  # The PHAR, run through a whole task as Claude Code drives it.
+  # The PHAR, run through a whole task as an agent drives it.
   phar:
     runs-on: ubuntu-latest
     steps:

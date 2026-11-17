@@ -15,6 +15,7 @@ final readonly class Decision
     public const NO_SCOPE = 'no-scope';
     public const IN_SCOPE = 'in-scope';
     public const OUTSIDE_SCOPE = 'outside-scope';
+    public const UNDECIDED = 'undecided';
 
     /**
      * @param Verdict $verdict
