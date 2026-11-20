@@ -163,7 +163,10 @@ Registered on `Stop`. Runs the review against `HEAD`.
 - Failed: `{"decision": "block", "reason": "<the report>\n\nFix what failed before finishing: …"}`. Claude Code
   then continues the conversation with the reason.
 - Input with `"stop_hook_active": true` (the agent is already continuing because of a stop hook): nothing. The agent
-  is sent back **once**; a check that can never pass does not keep it in a loop.
+  is sent back **once**; a check that can never pass does not keep it in a loop. Exception: a check with `retry: N`
+  that still fails sends it back up to N more times in a row, counted per `session_id` in `.kekkai/stop.json`
+  (written only when a check has `retry`; without `session_id`, nothing).
+- Only the checks with `stop` in `on` run.
 - Error (not a git repository, invalid configuration): nothing, so the stop hook never prevents the agent from
   stopping because of Kekkai itself.
 
@@ -182,13 +185,15 @@ When Kekkai cannot decide, the answer is the `ask` one, with the error.
 
 ### Cursor: `kekkai hook stop --agent cursor [--no-checks]`
 
-Registered on `stop` with `loop_limit: 1`. Runs the review against `HEAD`.
+Registered on `stop` with `loop_limit: 6` (1 + the highest `retry` allowed, 5). Runs the review against `HEAD`.
 
 - Passed: nothing.
 - Failed: `{"followup_message": "<the report>\n\nFix what failed before finishing: …"}`, which Cursor sends to the
   agent as the next message.
-- Input with a `loop_count` other than 0, or a `status` other than `completed` (aborted, error): nothing. The agent
-  is sent back **once**.
+- Input with a `status` other than `completed` (aborted, error): nothing.
+- Input with a `loop_count` other than 0: nothing. The agent is sent back **once**, except for a check with
+  `retry: N` still failing, which sends it back while `loop_count` is at most N.
+- Only the checks with `stop` in `on` run.
 - Error: nothing, as for Claude Code.
 
 ## MCP server

@@ -224,7 +224,7 @@ The attestation says that the release workflow of this repository built the file
   with an edit hook has the edit refused before it happens.
 - **One scope per checkout.** Two agents in the same directory share it: give each its own git worktree.
 - **Sent back once.** If the review still fails, the agent is let stop, so a check that can never pass does
-  not loop forever: read the report yourself.
+  not loop forever: read the report yourself. A check's `retry` (at most 5) gives it more rounds.
 
 All of them: [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 

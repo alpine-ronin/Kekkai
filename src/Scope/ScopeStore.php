@@ -43,6 +43,29 @@ final readonly class ScopeStore
     }
 
     /**
+     * How many times in a row the stop hook has sent the agent of this session back, or null when not recorded.
+     */
+    public function sentBack(string $session): ?int
+    {
+        $file = $this->directory() . '/stop.json';
+        if (!is_file($file)) {
+            return null;
+        }
+
+        $data = json_decode((string) file_get_contents($file), true);
+        if (!\is_array($data) || ($data['session'] ?? null) !== $session || !\is_int($data['sentBack'] ?? null)) {
+            return null;
+        }
+
+        return $data['sentBack'];
+    }
+
+    public function saveSentBack(string $session, int $count): void
+    {
+        $this->write('stop.json', json_encode(['session' => $session, 'sentBack' => $count], \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR) . "\n");
+    }
+
+    /**
      * @param array<string, mixed> $event
      */
     public function log(array $event): void

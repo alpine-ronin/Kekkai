@@ -28,6 +28,7 @@
         },
         "checks": {
             "type": "array",
+            "description": "The checks of kekkai.yaml with `ci` in `on` (kekkai check).",
             "items": {
                 "type": "object",
                 "required": ["name", "command", "passed", "timedOut", "output"],
