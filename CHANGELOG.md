@@ -14,6 +14,10 @@ configuration, the CLI or the MCP tools; each change is listed here.
 - The docs describe Kekkai for any coding agent: hooks for Claude Code and Cursor, the MCP server and `kekkai check`
   for the others.
 
+### Docs
+- The README leads with what Kekkai gives the reviewer: the declared intent, edits outside it refused, the diff
+  reviewed before the agent stops. It no longer claims to keep the agent inside its scope.
+
 ## 0.1.0 (2026-11-16)
 
 The first release.
