@@ -114,7 +114,9 @@ Clear it when a task is done; the next task declares its own.
    revision) and the untracked files not ignored (`git ls-files --others --exclude-standard`), sorted and
    deduplicated. Deleted files count. In a repository without commits, the staged files. Outside a git repository,
    or with a revision git does not know, an error.
-2. **Findings**: the decision for each changed file, except those allowed. `no-scope` decisions are left out when
+2. **Findings**: the decision for each changed file, except those allowed. The report also keeps every decision,
+   allowed ones included, with what decided it (the scope entry, or the protected or always-allowed pattern): it
+   lists them one line per file before the summary, and as `verdicts` in JSON. `no-scope` decisions are left out when
    `without-scope: allow`.
 3. **Checks**: when `$runChecks` and at least one file changed, every check of `kekkai.yaml`, in order, from the
    project root, through the shell, with `KEKKAI_CHANGED_FILES` (the changed files, one per line) and `KEKKAI_BASE`

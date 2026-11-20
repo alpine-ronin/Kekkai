@@ -17,12 +17,12 @@ final class ReportTest extends TestCase
     public function testOutsideTheScopeFailsOnlyWhenDenied(): void
     {
         $outside = new Decision(Verdict::Deny, Decision::OUTSIDE_SCOPE, 'src/B.php', '');
-        $deny = new Report(['src/B.php'], [$outside], [], null, new Config(), 'HEAD');
+        $deny = new Report(['src/B.php'], [$outside], [], null, new Config(), 'HEAD', [$outside]);
         self::assertFalse($deny->passed());
         self::assertStringContainsString('✗ Outside the scope:', $deny->toText());
 
         $asked = new Decision(Verdict::Ask, Decision::OUTSIDE_SCOPE, 'src/B.php', '');
-        $ask = new Report(['src/B.php'], [$asked], [], null, Config::fromArray(['outside-scope' => 'ask']), 'HEAD');
+        $ask = new Report(['src/B.php'], [$asked], [], null, Config::fromArray(['outside-scope' => 'ask']), 'HEAD', [$asked]);
         self::assertTrue($ask->passed());
         self::assertStringContainsString('! Outside the scope:', $ask->toText());
     }
@@ -34,7 +34,7 @@ final class ReportTest extends TestCase
             new Decision(Verdict::Deny, Decision::GUARDED, 'kekkai.yaml', ''),
             new Decision(Verdict::Ask, Decision::NO_SCOPE, 'src/A.php', ''),
         ];
-        $report = new Report(['composer.lock', 'kekkai.yaml', 'src/A.php'], $findings, [], null, new Config(), 'main');
+        $report = new Report(['composer.lock', 'kekkai.yaml', 'src/A.php'], $findings, [], null, new Config(), 'main', $findings);
 
         self::assertTrue($report->passed());
         $text = $report->toText();
@@ -55,6 +55,7 @@ final class ReportTest extends TestCase
             Scope::declare('A', ['src/'], 'agent', new Config())->widen(['tests/'], 'Tests too', 'agent', new Config()),
             new Config(),
             'HEAD',
+            [new Decision(Verdict::Allow, Decision::IN_SCOPE, 'src/A.php', '', 'src/')],
         );
 
         self::assertFalse($report->passed());
@@ -73,8 +74,43 @@ final class ReportTest extends TestCase
         self::assertCount(3, $array['checks']);
     }
 
+    public function testEachFileIsListedBeforeTheSummary(): void
+    {
+        $outside = new Decision(Verdict::Deny, Decision::OUTSIDE_SCOPE, 'src/B.php', '');
+        $protected = new Decision(Verdict::Ask, Decision::PROTECTED, 'composer.lock', '', 'composer.lock');
+        $decisions = [
+            new Decision(Verdict::Allow, Decision::IN_SCOPE, 'src/Catalog/A.php', '', 'catalog'),
+            $outside,
+            $protected,
+            new Decision(Verdict::Allow, Decision::IN_SCOPE, 'src/Catalog/C.php', '', 'catalog'),
+        ];
+        $report = new Report(
+            ['composer.lock', 'src/B.php', 'src/Catalog/A.php', 'src/Catalog/C.php'],
+            [$outside, $protected],
+            [new CheckResult('tests', 'phpunit', false, 'FAIL in src/Catalog/C.php')],
+            null,
+            new Config(),
+            'HEAD',
+            $decisions,
+        );
+
+        $lines = explode("\n", $report->toText());
+        self::assertSame([
+            '✓ src/Catalog/A.php: in scope (catalog)',
+            '✗ src/B.php: out of scope',
+            '! composer.lock: protected (composer.lock)',
+            '✗ src/Catalog/C.php: in scope (catalog); check tests failed',
+            'Kekkai: 4 file(s) changed since HEAD. FAILED',
+        ], \array_slice($lines, 0, 5));
+
+        $verdicts = $report->toArray()['verdicts'];
+        self::assertIsArray($verdicts);
+        self::assertSame(['path' => 'src/Catalog/C.php', 'rule' => 'in-scope', 'verdict' => 'allow', 'matchedBy' => 'catalog', 'failedChecks' => ['tests']], $verdicts[3]);
+        self::assertSame(['path' => 'src/B.php', 'rule' => 'outside-scope', 'verdict' => 'deny', 'matchedBy' => null, 'failedChecks' => []], $verdicts[1]);
+    }
+
     public function testNoChange(): void
     {
-        self::assertSame('Kekkai: no change since HEAD.', (new Report([], [], [], null, new Config(), 'HEAD'))->toText());
+        self::assertSame('Kekkai: no change since HEAD.', (new Report([], [], [], null, new Config(), 'HEAD', []))->toText());
     }
 }

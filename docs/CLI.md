@@ -50,6 +50,19 @@ kekkai check --no-checks           # the scope only
 kekkai check --format json         # docs/schemas/report.schema.json
 ```
 
+The output lists each changed file first, with its verdict and what decided it, then the summary:
+
+```text
+✓ src/Catalog/Price.php: in scope (catalog)
+✗ src/Billing/Invoice.php: out of scope
+! composer.lock: protected (composer.lock)
+✗ src/Catalog/Product.php: in scope (catalog); check tests failed
+Kekkai: 4 file(s) changed since HEAD. FAILED
+```
+
+A failing check is shown on a file when its output names the file's path. With `--format json`, the same is in
+`verdicts`, one entry per file.
+
 Exit code 0 when the review passed, 1 when it failed, 2 on an error (not a git repository, an unknown revision, an
 invalid configuration). In a terminal, the marks are coloured (`NO_COLOR` and `FORCE_COLOR` are honoured).
 

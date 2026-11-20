@@ -20,6 +20,11 @@ configuration, the CLI or the MCP tools; each change is listed here.
 - `on: [stop, ci]` on a check (the default): `[ci]` runs it in `kekkai check` only, `[stop]` at the agent's stop
   (stop hook, `check_changes`) only.
 
+### Review
+- `kekkai check`, `check_changes` and the stop hook list each changed file first: in scope, out of scope, protected,
+  what decided it (the scope entry or zone, the pattern), and the failing checks whose output names it. The summary
+  follows. `--format json` gains `verdicts`, one entry per file.
+
 ### Docs
 - The README leads with what Kekkai gives the reviewer: the declared intent, edits outside it refused, the diff
   reviewed before the agent stops. It no longer claims to keep the agent inside its scope.

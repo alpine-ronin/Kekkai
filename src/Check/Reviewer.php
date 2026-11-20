@@ -32,8 +32,10 @@ final readonly class Reviewer
         $gate = $this->project->gate();
 
         $findings = [];
+        $decisions = [];
         foreach ($files as $file) {
             $decision = $gate->decide($file);
+            $decisions[] = $decision;
             if ($decision->rule === Decision::NO_SCOPE && $decision->verdict === Verdict::Allow) {
                 continue;
             }
@@ -56,6 +58,6 @@ final readonly class Reviewer
             }
         }
 
-        return new Report($files, $findings, $checks, $scope, $this->project->config, $base);
+        return new Report($files, $findings, $checks, $scope, $this->project->config, $base, $decisions);
     }
 }
