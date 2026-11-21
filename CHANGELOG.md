@@ -25,6 +25,9 @@ configuration, the CLI or the MCP tools; each change is listed here.
   what decided it (the scope entry or zone, the pattern), and the failing checks whose output names it. The summary
   follows. `--format json` gains `verdicts`, one entry per file.
 
+### Scope
+- `kekkai scope show --format json` prints the scope as JSON (`docs/schemas/scope.schema.json`), `null` without one.
+
 ### Docs
 - The README leads with what Kekkai gives the reviewer: the declared intent, edits outside it refused, the diff
   reviewed before the agent stops. It no longer claims to keep the agent inside its scope.

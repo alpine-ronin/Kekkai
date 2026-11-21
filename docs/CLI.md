@@ -34,12 +34,16 @@ Exit code 1 when a line is ✗.
 
 ```bash
 kekkai scope                                              # show
+kekkai scope show --format json                           # the scope as JSON
 kekkai scope declare catalog config/services.yaml -m "Add a price to products"
 kekkai scope widen src/Shared/Money.php -m "Prices are rounded by Money"
 kekkai scope clear
 ```
 
 Declaring from the CLI replaces any current scope. Widening from the CLI works whatever `allow-widen` says.
+
+`--format json` (`-f`) prints the scope as `.kekkai/scope.json` holds it, valid against
+[schemas/scope.schema.json](schemas/scope.schema.json), or `null` when no scope is declared.
 
 ## kekkai check
 

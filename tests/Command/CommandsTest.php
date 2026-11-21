@@ -8,6 +8,8 @@ use Kekkai\Application;
 use Kekkai\Command\HookCommand;
 use Kekkai\Tests\Support\Json;
 use Kekkai\Tests\Support\TemporaryProject;
+use Opis\JsonSchema\Errors\ErrorFormatter;
+use Opis\JsonSchema\Validator;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
@@ -49,6 +51,23 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('Scope: Prices', $this->command('scope', ['action' => 'show'])->getDisplay());
         self::assertStringContainsString('Scope cleared', $this->command('scope', ['action' => 'clear'])->getDisplay());
         self::assertStringContainsString('No scope to clear', $this->command('scope', ['action' => 'clear'])->getDisplay());
+    }
+
+    public function testScopeShowAsJsonIsValidAgainstTheSchema(): void
+    {
+        $this->project->write('kekkai.yaml', "zones:\n  catalog: ['src/Catalog/']\n");
+        self::assertSame('null', trim($this->command('scope', ['--format' => 'json'])->getDisplay()));
+
+        $this->command('scope', ['action' => 'declare', 'paths' => ['catalog'], '-m' => 'Prices']);
+        $this->command('scope', ['action' => 'widen', 'paths' => ['src/Shared/'], '-m' => 'Money']);
+        $show = $this->command('scope', ['action' => 'show', '--format' => 'json']);
+
+        $schema = json_decode((string) file_get_contents(__DIR__ . '/../../docs/schemas/scope.schema.json'), flags: \JSON_THROW_ON_ERROR);
+        self::assertIsObject($schema);
+        $error = (new Validator())->validate(json_decode($show->getDisplay()), $schema)->error();
+        self::assertNull($error, $error === null ? '' : (string) json_encode((new ErrorFormatter())->format($error)));
+        self::assertSame(['catalog'], Json::decode($show->getDisplay(), 'entries'));
+        self::assertSame('Money', Json::decode($show->getDisplay(), 'widenings', 0, 'reason'));
     }
 
     public function testScopeErrors(): void
