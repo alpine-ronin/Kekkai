@@ -19,6 +19,7 @@ final readonly class Report
      * @param Scope|null $scope
      * @param Config $config
      * @param string $base
+     * @param list<Decision> $decisions the decision for each changed file, allowed ones included
      */
     public function __construct(
         public array $files,
@@ -27,6 +28,7 @@ final readonly class Report
         public ?Scope $scope,
         public Config $config,
         public string $base,
+        public array $decisions,
     ) {
     }
 
@@ -42,7 +44,7 @@ final readonly class Report
     {
         return array_values(array_filter(
             $this->findings,
-            static fn (Decision $d): bool => $d->rule === Decision::OUTSIDE_SCOPE && $d->verdict === Verdict::Deny,
+            fn (Decision $d): bool => $this->isBlocking($d),
         ));
     }
 
@@ -61,12 +63,27 @@ final readonly class Report
             return sprintf('Kekkai: no change since %s.', $text($this->base));
         }
 
-        $lines = [sprintf(
+        $lines = [];
+        foreach ($this->decisions as $decision) {
+            $failedChecks = $this->failedChecksNaming($decision->path);
+            $markOfFile = match (true) {
+                $failedChecks !== [], $this->isBlocking($decision) => $fail,
+                $decision->verdict !== Verdict::Allow => $warn,
+                default => $pass,
+            };
+            $line = sprintf('%s %s: %s', $markOfFile, $text($decision->path), $text(self::describeVerdict($decision)));
+            if ($failedChecks !== []) {
+                $line .= $text(sprintf('; check %s failed', implode(', ', $failedChecks)));
+            }
+            $lines[] = $line;
+        }
+
+        $lines[] = sprintf(
             'Kekkai: %d file(s) changed since %s. %s',
             \count($this->files),
             $text($this->base),
             $this->passed() ? $mark('PASSED', 'fg=green;options=bold') : $mark('FAILED', 'fg=red;options=bold'),
-        )];
+        );
         $lines[] = $text($this->scope?->describe($this->config) ?? 'Scope: none declared');
 
         $groups = [
@@ -114,6 +131,70 @@ final readonly class Report
             'scope' => $this->scope?->toArray(),
             'findings' => array_map(static fn (Decision $d): array => ['path' => $d->path, 'rule' => $d->rule, 'verdict' => $d->verdict->value], $this->findings),
             'checks' => array_map(static fn (CheckResult $c): array => ['name' => $c->name, 'command' => $c->command, 'passed' => $c->passed, 'timedOut' => $c->timedOut, 'output' => $c->tail()], $this->checks),
+            'verdicts' => array_map(fn (Decision $d): array => [
+                'path' => $d->path,
+                'rule' => $d->rule,
+                'verdict' => $d->verdict->value,
+                'matchedBy' => $d->matchedBy,
+                'failedChecks' => $this->failedChecksNaming($d->path),
+            ], $this->decisions),
         ];
+    }
+
+    /**
+     * @param string $path
+     *
+     * @return list<string> the failing checks whose output names the file
+     */
+    private function failedChecksNaming(string $path): array
+    {
+        $names = [];
+        foreach ($this->checks as $check) {
+            if (!$check->passed && self::names($this->withoutLongerPathsHolding($check->output, $path), $path)) {
+                $names[] = $check->name;
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * A changed file whose path holds this one (tests/src/A.php for src/A.php) must not count as naming it.
+     */
+    private function withoutLongerPathsHolding(string $output, string $path): string
+    {
+        $longer = array_values(array_filter($this->files, static fn (string $file): bool => $file !== $path && str_contains($file, $path)));
+        usort($longer, static fn (string $a, string $b): int => \strlen($b) <=> \strlen($a));
+
+        return str_replace($longer, '', $output);
+    }
+
+    /**
+     * The path on its own, or at the end of an absolute path: not inside a longer name (src/A.php.bak).
+     */
+    private static function names(string $output, string $path): bool
+    {
+        return preg_match('~(?<![\w.-])' . preg_quote($path, '~') . '(?![\w/-]|\.\w)~', $output) === 1;
+    }
+
+    private function isBlocking(Decision $decision): bool
+    {
+        return $decision->rule === Decision::OUTSIDE_SCOPE && $decision->verdict === Verdict::Deny;
+    }
+
+    private static function describeVerdict(Decision $decision): string
+    {
+        $label = match ($decision->rule) {
+            Decision::IN_SCOPE => 'in scope',
+            Decision::ALWAYS_ALLOWED => 'always allowed',
+            Decision::OUTSIDE_SCOPE => 'out of scope',
+            Decision::PROTECTED => 'protected',
+            Decision::GUARDED => 'Kekkai file',
+            Decision::OUTSIDE_PROJECT => 'outside the project',
+            Decision::NO_SCOPE => 'no scope declared',
+            default => $decision->rule,
+        };
+
+        return $decision->matchedBy === null ? $label : sprintf('%s (%s)', $label, $decision->matchedBy);
     }
 }

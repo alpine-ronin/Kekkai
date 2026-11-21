@@ -7,6 +7,7 @@ namespace Kekkai\Scope;
 final readonly class ScopeStore
 {
     public const DIRECTORY = '.kekkai';
+    private const RECORDED_SESSIONS = 20;
 
     /**
      * @param string $root
@@ -40,6 +41,39 @@ final readonly class ScopeStore
         $file = $this->file();
 
         return is_file($file) && unlink($file);
+    }
+
+    /**
+     * How many times in a row the stop hook has sent the agent of this session back, or null when not recorded.
+     */
+    public function sentBack(string $session): ?int
+    {
+        return $this->sentBackBySession()[$session] ?? null;
+    }
+
+    public function saveSentBack(string $session, int $count): void
+    {
+        $counts = $this->sentBackBySession();
+        unset($counts[$session]);
+        $counts[$session] = $count;
+        $counts = \array_slice($counts, -self::RECORDED_SESSIONS, preserve_keys: true);
+        $this->write('stop.json', json_encode(['sentBack' => $counts], \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR) . "\n");
+    }
+
+    /**
+     * @return array<int|string, int> the send-backs of the latest sessions, the most recent last
+     */
+    private function sentBackBySession(): array
+    {
+        $file = $this->directory() . '/stop.json';
+        if (!is_file($file)) {
+            return [];
+        }
+
+        $data = json_decode((string) file_get_contents($file), true);
+        $counts = \is_array($data) && \is_array($data['sentBack'] ?? null) ? $data['sentBack'] : [];
+
+        return array_filter($counts, 'is_int');
     }
 
     /**
