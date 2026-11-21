@@ -9,6 +9,7 @@ use Kekkai\Check\Report;
 use Kekkai\Config\Config;
 use Kekkai\Gate\Decision;
 use Kekkai\Scope\Scope;
+use Kekkai\Tests\Support\Json;
 use Kekkai\Verdict;
 use PHPUnit\Framework\TestCase;
 
@@ -107,6 +108,18 @@ final class ReportTest extends TestCase
         self::assertIsArray($verdicts);
         self::assertSame(['path' => 'src/Catalog/C.php', 'rule' => 'in-scope', 'verdict' => 'allow', 'matchedBy' => 'catalog', 'failedChecks' => ['tests']], $verdicts[3]);
         self::assertSame(['path' => 'src/B.php', 'rule' => 'outside-scope', 'verdict' => 'deny', 'matchedBy' => null, 'failedChecks' => []], $verdicts[1]);
+    }
+
+    public function testAFailingCheckNamesAFileOnlyByItsWholePath(): void
+    {
+        $files = ['src/A.php', 'src/A.php.bak', 'src/B.php', 'tests/src/A.php'];
+        $decisions = array_map(static fn (string $file): Decision => new Decision(Verdict::Allow, Decision::IN_SCOPE, $file, '', 'src/'), $files);
+        $output = "FAIL tests/src/A.php:10\nFAIL src/A.php.bak:1\nFAIL /app/src/B.php:3";
+        $report = new Report($files, [], [new CheckResult('tests', 'phpunit', false, $output)], null, new Config(), 'HEAD', $decisions);
+
+        $verdicts = $report->toArray()['verdicts'];
+        self::assertIsArray($verdicts);
+        self::assertSame([[], ['tests'], ['tests'], ['tests']], array_map(static fn (mixed $verdict): mixed => Json::path($verdict, 'failedChecks'), $verdicts));
     }
 
     public function testNoChange(): void

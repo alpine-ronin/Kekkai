@@ -41,6 +41,35 @@ final class StopRetryTest extends TestCase
         self::assertNull(Cursor::stop(['status' => 'completed', 'loop_count' => 3], $project->root));
     }
 
+    public function testTwoSessionsKeepTheirOwnCount(): void
+    {
+        $project = $this->failingProject("checks:\n  - name: fails\n    run: 'false'\n    retry: 1\n");
+
+        foreach (['s', 'other'] as $session) {
+            self::assertIsArray(ClaudeCode::stop(['session_id' => $session], $project->root));
+        }
+        foreach (['s', 'other'] as $session) {
+            self::assertIsArray(ClaudeCode::stop(['session_id' => $session, 'stop_hook_active' => true], $project->root));
+        }
+        foreach (['s', 'other'] as $session) {
+            self::assertNull(ClaudeCode::stop(['session_id' => $session, 'stop_hook_active' => true], $project->root));
+        }
+    }
+
+    public function testACountThatCannotBeWrittenEndsTheRetries(): void
+    {
+        $project = $this->failingProject("checks:\n  - name: fails\n    run: 'false'\n    retry: 3\n");
+        $project->write('.kekkai', 'not a directory');
+
+        set_error_handler(static fn (): bool => true);
+        try {
+            self::assertIsArray(ClaudeCode::stop(['session_id' => 's'], $project->root));
+            self::assertNull(ClaudeCode::stop(['session_id' => 's', 'stop_hook_active' => true], $project->root));
+        } finally {
+            restore_error_handler();
+        }
+    }
+
     public function testRetryOnlyForTheCheckThatHasIt(): void
     {
         $project = $this->failingProject("checks:\n  - name: passes\n    run: 'true'\n    retry: 3\n  - name: fails\n    run: 'false'\n");

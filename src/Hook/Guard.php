@@ -10,6 +10,7 @@ use Kekkai\Config\CheckTrigger;
 use Kekkai\Config\Config;
 use Kekkai\Gate\Decision;
 use Kekkai\Project;
+use Kekkai\Scope\ScopeStore;
 use Kekkai\Verdict;
 
 /**
@@ -67,12 +68,27 @@ final class Guard
             return null;
         }
 
-        $project->store->log(['event' => 'stop', 'blocking' => array_map(static fn (Decision $d): string => $d->path, $report->blocking()), 'passed' => false]);
         if ($session !== null && $maxRetry > 0) {
-            $project->store->saveSentBack($session, $sentBack + 1);
+            $isRecorded = self::recordSentBack($project->store, $session, $sentBack + 1);
+            // An unrecorded session counts as sent back once: without a record, the retries would never end.
+            if (!$isRecorded && $sentBack > 0) {
+                return null;
+            }
         }
+        $project->store->log(['event' => 'stop', 'blocking' => array_map(static fn (Decision $d): string => $d->path, $report->blocking()), 'passed' => false]);
 
         return $report->toText() . "\n\n" . self::SEND_BACK;
+    }
+
+    private static function recordSentBack(ScopeStore $store, string $session, int $count): bool
+    {
+        try {
+            $store->saveSentBack($session, $count);
+        } catch (\RuntimeException) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

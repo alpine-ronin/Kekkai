@@ -150,12 +150,31 @@ final readonly class Report
     {
         $names = [];
         foreach ($this->checks as $check) {
-            if (!$check->passed && str_contains($check->output, $path)) {
+            if (!$check->passed && self::names($this->withoutLongerPathsHolding($check->output, $path), $path)) {
                 $names[] = $check->name;
             }
         }
 
         return $names;
+    }
+
+    /**
+     * A changed file whose path holds this one (tests/src/A.php for src/A.php) must not count as naming it.
+     */
+    private function withoutLongerPathsHolding(string $output, string $path): string
+    {
+        $longer = array_values(array_filter($this->files, static fn (string $file): bool => $file !== $path && str_contains($file, $path)));
+        usort($longer, static fn (string $a, string $b): int => \strlen($b) <=> \strlen($a));
+
+        return str_replace($longer, '', $output);
+    }
+
+    /**
+     * The path on its own, or at the end of an absolute path: not inside a longer name (src/A.php.bak).
+     */
+    private static function names(string $output, string $path): bool
+    {
+        return preg_match('~(?<![\w.-])' . preg_quote($path, '~') . '(?![\w/-]|\.\w)~', $output) === 1;
     }
 
     private function isBlocking(Decision $decision): bool
