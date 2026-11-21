@@ -50,6 +50,8 @@ kekkai check --no-checks           # the scope only
 kekkai check --format json         # docs/schemas/report.schema.json
 ```
 
+`--base <ref>` reviews what changed since `<ref>`: commits after it, the working tree and untracked files.
+
 The output lists each changed file first, with its verdict and what decided it, then the summary:
 
 ```text

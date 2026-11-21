@@ -94,6 +94,21 @@ final class CommandsTest extends TestCase
         self::assertSame(2, $this->command('check', ['--base' => 'nope'])->getStatusCode());
     }
 
+    public function testCheckSinceAnOlderRevision(): void
+    {
+        $first = trim($this->project->git('rev-parse', 'HEAD'));
+        $this->project->write('src/Catalog/Price.php')->commit('second')->write('src/Catalog/Tax.php');
+
+        $sinceHead = json_decode($this->command('check', ['--format' => 'json', '--no-checks' => true])->getDisplay(), true);
+        $sinceFirst = json_decode($this->command('check', ['--base' => $first, '--format' => 'json', '--no-checks' => true])->getDisplay(), true);
+
+        self::assertIsArray($sinceHead);
+        self::assertIsArray($sinceFirst);
+        self::assertSame(['src/Catalog/Tax.php'], $sinceHead['files']);
+        self::assertSame(['src/Catalog/Price.php', 'src/Catalog/Tax.php'], $sinceFirst['files']);
+        self::assertSame($first, $sinceFirst['base']);
+    }
+
     public function testCheckOnAnInvalidConfiguration(): void
     {
         $this->project->write('kekkai.yaml', "outside-scope: maybe\n");
