@@ -62,6 +62,15 @@ Edit and stop hooks ship for **Claude Code** and **Cursor**. Any other agent tha
 
 No LLM, no network, nothing leaves your machine. A hook call takes about 50 ms.
 
+### Two agents at once
+
+The scope lives in `.kekkai/`, one per checkout: two agents in the same directory share it. Give each its own git
+worktree, and so its own scope:
+
+```bash
+git worktree add ../shop-catalog -b catalog    # the second agent works in ../shop-catalog
+```
+
 ## Quick start
 
 ### 1. Install
@@ -222,7 +231,6 @@ The attestation says that the release workflow of this repository built the file
   afterwards, it does not prevent it. To control commands before they run, use Airlock.
 - **Edit hooks for Claude Code and Cursor.** Any MCP client can use the server and `kekkai check`, but only an agent
   with an edit hook has the edit refused before it happens.
-- **One scope per checkout.** Two agents in the same directory share it: give each its own git worktree.
 - **Sent back once.** If the review still fails, the agent is let stop, so a check that can never pass does
   not loop forever: read the report yourself. A check's `retry` (at most 5) gives it more rounds.
 

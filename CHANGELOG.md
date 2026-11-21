@@ -28,6 +28,8 @@ configuration, the CLI or the MCP tools; each change is listed here.
 ### Docs
 - The README leads with what Kekkai gives the reviewer: the declared intent, edits outside it refused, the diff
   reviewed before the agent stops. It no longer claims to keep the agent inside its scope.
+- The README explains running two agents at once (one git worktree each) under "How it works", no longer as a
+  limitation.
 
 ## 0.1.0 (2026-11-16)
 
